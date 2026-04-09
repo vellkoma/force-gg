@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Noto Sans JP', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-lol-bg text-lol-text;
+    min-height: 100vh;
+  }
+
+  /* スクロールバーのカスタマイズ */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-lol-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-lol-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-lol-accent;
+  }
+}
+
+@layer components {
+  /* LoLゴールドのグラデーションテキスト */
+  .text-gold-gradient {
+    @apply bg-gradient-gold bg-clip-text text-transparent;
+    background-size: 200% auto;
+  }
+
+  /* ゲーミングカードの共通スタイル */
+  .card-lol {
+    @apply bg-lol-card border border-lol-border rounded-xl transition-colors duration-200;
+  }
+
+  .card-lol:hover {
+    @apply border-lol-border-hover;
+  }
+}

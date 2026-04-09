@@ -1,0 +1,24 @@
+# 環境変数（APIキーを絶対にコミットしない）
+.env
+.env.local
+.env.*.local
+
+# Node.js
+web/node_modules/
+web/dist/
+web/.cache/
+
+# Python
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.venv/
+backend/venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+*.code-workspace
