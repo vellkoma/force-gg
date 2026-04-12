@@ -1,3 +1,4 @@
+# 開発中のため検索エンジンのクロールを拒否
+# 本番公開時は Allow: / に戻す
 User-agent: *
-Allow: /
-Sitemap: https://lol-stats-jp.vercel.app/sitemap.xml
+Disallow: /
