@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ChampionDetailData, ChampionListItem, ChampionsResponse, ChampionStats2 } from '@/types/champion'
+import type { ChampionDetailData, ChampionsResponse, ChampionStats2 } from '@/types/champion'
 import type { BuildRecommendation } from '@/types/build'
 
 /**

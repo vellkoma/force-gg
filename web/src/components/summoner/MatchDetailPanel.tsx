@@ -3,7 +3,6 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
 import type { MatchDetail, MatchTimeline, ParticipantStats } from '@/types/match'
 import { useChampions } from '@/hooks/useChampions'
 import { MatchResultTeams } from './MatchResultTeams'
@@ -52,7 +51,10 @@ function yFormatter(tab: ChartTab, v: number): string {
 }
 
 // カスタムツールチップ（2カラム: 味方左・敵右）
-interface ChartTooltipProps extends TooltipProps<number, string> {
+interface ChartTooltipProps {
+  active?:       boolean
+  payload?:      Array<{ dataKey?: string | number; value?: unknown }>
+  label?:        number | string
   participants:  ParticipantStats[]
   myTeamId:      number
   plotColors:    Record<number, string>
@@ -243,18 +245,7 @@ export const MatchDetailPanel: FC<Props> = ({ timeline, match, puuid }) => {
                   dataKey="second"
                   tickFormatter={(s: number) => s % 300 === 0 ? toMMSS(s) : ''}
                   tick={{ fontSize: 10, fill: '#7a8fa6' }}
-                  tickLine={(props) => {
-                    const { x, y, payload } = props as { x: number; y: number; payload: { value: number } }
-                    const isMajor = payload.value % 300 === 0
-                    return (
-                      <line
-                        x1={x} y1={y}
-                        x2={x} y2={isMajor ? y + 4 : y + 2}
-                        stroke={isMajor ? '#7a8fa6' : '#3a4a5a'}
-                        strokeWidth={1}
-                      />
-                    )
-                  }}
+                  tickLine={{ stroke: '#3a4a5a', strokeWidth: 1 }}
                   interval={0}
                 />
                 <YAxis
@@ -269,19 +260,7 @@ export const MatchDetailPanel: FC<Props> = ({ timeline, match, puuid }) => {
                       : undefined
                   }
                   tick={{ fontSize: 10, fill: tabColor }}
-                  tickLine={(props) => {
-                    if (activeTab !== 'level') return <line />
-                    const { x, y, payload } = props as { x: number; y: number; payload: { value: number } }
-                    const isMajor = payload.value % 3 === 0 || payload.value === 1 || payload.value === 18
-                    return (
-                      <line
-                        x1={isMajor ? x - 4 : x - 2} y1={y}
-                        x2={x} y2={y}
-                        stroke={isMajor ? '#7a8fa6' : '#3a4a5a'}
-                        strokeWidth={1}
-                      />
-                    )
-                  }}
+                  tickLine={{ stroke: '#3a4a5a', strokeWidth: 1 }}
                   axisLine={false}
                   width={44}
                   domain={levelDomain}
@@ -291,7 +270,9 @@ export const MatchDetailPanel: FC<Props> = ({ timeline, match, puuid }) => {
                   wrapperStyle={{ zIndex: 50 }}
                   content={(props) => (
                     <ChartTooltip
-                      {...props}
+                      active={props.active}
+                      payload={props.payload}
+                      label={props.label}
                       participants={match.participants}
                       myTeamId={myStats?.team_id ?? 100}
                       plotColors={plotColors}

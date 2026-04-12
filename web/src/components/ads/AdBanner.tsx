@@ -76,7 +76,7 @@ export const AdBanner = ({
     const timer = setTimeout(() => {
       injectAdSenseScript(clientId)
       try {
-        const w = window as Record<string, unknown>
+        const w = (window as unknown) as Record<string, unknown>
         const adsbygoogle = (w.adsbygoogle as unknown[]) ?? []
         w.adsbygoogle = adsbygoogle
         adsbygoogle.push({})
