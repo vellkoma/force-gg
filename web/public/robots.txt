@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://lol-stats-jp.vercel.app/sitemap.xml

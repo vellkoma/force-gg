@@ -1,7 +1,10 @@
 import type { FC } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { PremiumBadge } from '@/components/ui/PremiumBadge'
+import { SummonerSearchBar } from '@/components/summoner/SummonerSearchBar'
+import { AdBanner } from '@/components/ads/AdBanner'
 
 const FEATURES = [
   {
@@ -13,8 +16,8 @@ const FEATURES = [
   {
     icon:        '🔍',
     title:       'サモナー検索',
-    description: '戦績・ランク・KDA・使用チャンピオンを一覧表示。（準備中）',
-    href:        '#',
+    description: '戦績・ランク・KDA・使用チャンピオンを一覧表示。GameName#TAG形式で検索できます。',
+    href:        '/summoner',
   },
   {
     icon:        '🤖',
@@ -25,6 +28,12 @@ const FEATURES = [
 ] as const
 
 const HomePage: FC = () => {
+  const navigate = useNavigate()
+
+  const handleSearch = (gameName: string, tagLine: string) => {
+    navigate(`/summoner/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`)
+  }
+
   return (
     <div className="min-h-screen bg-lol-bg">
       {/* ナビゲーションバー */}
@@ -39,6 +48,19 @@ const HomePage: FC = () => {
               className="text-sm text-lol-text-body hover:text-lol-accent transition-colors"
             >
               チャンピオン
+            </Link>
+            <Link
+              to="/meta"
+              className="text-sm text-lol-text-body hover:text-lol-accent transition-colors"
+            >
+              メタ分析
+            </Link>
+            <Link
+              to="/premium"
+              className="flex items-center gap-1.5 text-sm text-lol-text-body hover:text-lol-accent transition-colors"
+            >
+              プレミアム
+              <PremiumBadge />
             </Link>
             <Button variant="secondary" size="sm" disabled>
               サインイン（準備中）
@@ -57,10 +79,16 @@ const HomePage: FC = () => {
           <br />
           <span className="text-lol-accent">データ</span>がここに
         </h1>
-        <p className="text-lol-text-body text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+        <p className="text-lol-text-body text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
           チャンピオン統計・サモナー戦績・AIコーチングを完全日本語でお届け。
           日本サーバー（JP1）のデータに特化しています。
         </p>
+
+        {/* サモナー検索バー */}
+        <div className="mb-8">
+          <SummonerSearchBar onSearch={handleSearch} />
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             to="/champions"
@@ -71,11 +99,22 @@ const HomePage: FC = () => {
           >
             チャンピオン統計を見る
           </Link>
-          <Button variant="ghost" size="lg" disabled>
-            サモナーを検索（準備中）
-          </Button>
+          <Link
+            to="/summoner"
+            className="inline-flex items-center justify-center gap-2 font-display
+                       bg-transparent text-lol-text-body border border-lol-border
+                       hover:border-lol-border-hover hover:bg-white/5
+                       px-6 py-3 text-lg rounded-xl transition-all duration-200"
+          >
+            サモナー検索
+          </Link>
         </div>
       </section>
+
+      {/* 広告（ヒーロー下） */}
+      <div className="max-w-6xl mx-auto px-4">
+        <AdBanner slot="home-hero-bottom" format="horizontal" />
+      </div>
 
       {/* 機能カードセクション */}
       <section className="max-w-6xl mx-auto px-4 py-12">

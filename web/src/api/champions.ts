@@ -1,5 +1,6 @@
 import apiClient from './client'
-import type { Champion, ChampionListItem, ChampionsResponse, ChampionStats2 } from '@/types/champion'
+import type { ChampionDetailData, ChampionListItem, ChampionsResponse, ChampionStats2 } from '@/types/champion'
+import type { BuildRecommendation } from '@/types/build'
 
 /**
  * チャンピオン一覧を取得する
@@ -14,8 +15,17 @@ export const fetchChampions = async (): Promise<ChampionsResponse> => {
  * チャンピオン詳細を取得する
  * バックエンド: GET /api/champions/:id
  */
-export const fetchChampion = async (id: string): Promise<Champion> => {
-  const { data } = await apiClient.get<Champion>(`/api/champions/${id}`)
+export const fetchChampion = async (id: string): Promise<ChampionDetailData> => {
+  const { data } = await apiClient.get<ChampionDetailData>(`/api/champions/${id}`)
+  return data
+}
+
+/**
+ * チャンピオンビルド推奨を取得する
+ * バックエンド: GET /api/champions/:id/builds
+ */
+export const fetchChampionBuilds = async (id: string): Promise<BuildRecommendation> => {
+  const { data } = await apiClient.get<BuildRecommendation>(`/api/champions/${id}/builds`)
   return data
 }
 

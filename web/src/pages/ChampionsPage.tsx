@@ -1,9 +1,10 @@
-import { type FC, useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { type FC, useMemo, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useChampions } from '@/hooks/useChampions'
 import { ChampionGrid } from '@/components/champions/ChampionGrid'
 import type { ChampionTag } from '@/types/champion'
 import { CHAMPION_TAG_LABELS } from '@/types/champion'
+import { AdBanner } from '@/components/ads/AdBanner'
 
 // ロールフィルターの選択肢
 type RoleFilter = 'ALL' | ChampionTag
@@ -18,11 +19,39 @@ const ROLE_FILTERS: { value: RoleFilter; label: string }[] = [
   { value: 'Support',   label: CHAMPION_TAG_LABELS.Support },
 ]
 
+const VALID_ROLES = new Set<string>(['ALL', 'Fighter', 'Tank', 'Mage', 'Assassin', 'Marksman', 'Support'])
+
 const ChampionsPage: FC = () => {
   const { data, isLoading, error } = useChampions()
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const [searchText, setSearchText]   = useState('')
-  const [activeRole, setActiveRole]   = useState<RoleFilter>('ALL')
+  // URLクエリパラメータからフィルター状態を読み取る
+  const rawRole = searchParams.get('role') ?? 'ALL'
+  const activeRole: RoleFilter = VALID_ROLES.has(rawRole) ? (rawRole as RoleFilter) : 'ALL'
+  const searchText = searchParams.get('q') ?? ''
+
+  const setActiveRole = (role: RoleFilter) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (role === 'ALL') next.delete('role')
+      else next.set('role', role)
+      return next
+    }, { replace: true })
+  }
+
+  const setSearchText = (text: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (text.trim() === '') next.delete('q')
+      else next.set('q', text)
+      return next
+    }, { replace: true })
+  }
+
+  useEffect(() => {
+    document.title = 'チャンピオン一覧 | LoL Stats JP'
+    return () => { document.title = 'LoL Stats JP' }
+  }, [])
 
   // フロントエンド側でフィルタリング
   const filtered = useMemo(() => {
@@ -126,6 +155,9 @@ const ChampionsPage: FC = () => {
             ))}
           </div>
         </div>
+
+        {/* 広告（フィルター下・グリッド上） */}
+        <AdBanner slot="champions-top" format="horizontal" />
 
         {/* チャンピオングリッド */}
         <ChampionGrid

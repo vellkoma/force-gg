@@ -1,0 +1,21 @@
+node_modules/
+dist/
+release/
+out/
+*.tsbuildinfo
+
+# electron-builder
+app-update.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ローカルDB（開発時）
+*.db
+*.db-shm
+*.db-wal
+
+# ログ
+*.log
+logs/

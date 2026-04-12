@@ -2,7 +2,9 @@
 チャンピオンサービス
 Data Dragon API からチャンピオンデータを取得・加工する
 """
+import asyncio
 import logging
+import re
 from typing import Optional
 
 import httpx
@@ -10,6 +12,7 @@ from fastapi import HTTPException
 
 from app.cache.redis import CacheClient
 from app.core.config import settings
+from app.models.build import BuildRecommendation, ItemInfo, RuneInfo
 from app.models.champion import ChampionDetail, ChampionListResponse, ChampionStats, ChampionSummary
 
 logger = logging.getLogger(__name__)
@@ -17,9 +20,45 @@ logger = logging.getLogger(__name__)
 CACHE_KEY_VERSION = "ddragon:version"
 CACHE_KEY_CHAMPIONS = "ddragon:champions:{version}"
 CACHE_KEY_CHAMPION_DETAIL = "ddragon:champion:{version}:{champion_id}"
+CACHE_KEY_CHAMPION_BUILDS = "champion_builds:{version}:{champion_id}"
 
 # バージョン情報のTTL（1時間）
 VERSION_TTL = 3600
+
+# タグ別コアアイテムID定義（Data Dragon item.json に存在する実アイテムID）
+# ロールごとにおすすめアイテムIDを5件まで指定する
+_TAG_ITEM_IDS: dict[str, list[int]] = {
+    "Fighter":   [3078, 3071, 3053, 3748, 6632],   # トリフォ, ブラッドサースター, スティールキャップ, タイタンズ, ドラゴンクロー
+    "Tank":      [3068, 3083, 3143, 3065, 3082],    # サンファイア, ウォームグ, ランデュイン, スピリットビサージュ, フローズンハート
+    "Mage":      [3089, 3135, 3157, 3165, 3040],    # ラバドン, ヴォイドスタッフ, ゾーニャ, モレロ, セラフ
+    "Assassin":  [3142, 6692, 3814, 3147, 6676],    # ヨウムー, セリルダ, エッジオブナイト, ハイドラ, メジャイ
+    "Marksman":  [6672, 3031, 3036, 3094, 3087],    # クラーケン, IE, モータルリマインダー, ラピッドファイア, スタティック
+    "Support":   [3190, 3109, 2065, 3050, 3107],    # ルーデンサポ, ナイトの誓い, ライラ, ザズィラン, リデンプション
+    "default":   [3078, 3031, 3089, 3068, 3190],    # フォールバック
+}
+
+# タグ別プライマリルーンスタイルIndex（runesReforged.json の配列順）
+# 0: Precision, 1: Domination, 2: Sorcery, 3: Resolve, 4: Inspiration
+_TAG_PRIMARY_STYLE_IDX: dict[str, int] = {
+    "Fighter":   0,  # Precision
+    "Tank":      3,  # Resolve
+    "Mage":      2,  # Sorcery
+    "Assassin":  1,  # Domination
+    "Marksman":  0,  # Precision
+    "Support":   3,  # Resolve
+    "default":   0,
+}
+
+# タグ別セカンダリルーンスタイルIndex
+_TAG_SECONDARY_STYLE_IDX: dict[str, int] = {
+    "Fighter":   3,  # Resolve
+    "Tank":      0,  # Precision
+    "Mage":      4,  # Inspiration
+    "Assassin":  2,  # Sorcery
+    "Marksman":  4,  # Inspiration
+    "Support":   2,  # Sorcery
+    "default":   2,
+}
 
 
 class ChampionService:
@@ -196,3 +235,166 @@ class ChampionService:
         )
 
         return detail
+
+    # ------------------------------------------------------------------
+    # ビルド推奨
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _strip_html(text: str) -> str:
+        """HTMLタグと改行を除去してプレーンテキストに変換する"""
+        return re.sub(r"<[^>]+>", "", text).replace("\n", " ").strip()
+
+    def _resolve_tag(self, tags: list[str]) -> str:
+        """チャンピオンタグリストからマッピングキーを決定する（先頭タグ優先）"""
+        for tag in tags:
+            if tag in _TAG_ITEM_IDS:
+                return tag
+        return "default"
+
+    async def _fetch_items(self, version: str) -> dict:
+        """Data Dragon item.json を取得して {itemId: raw_item} の辞書を返す"""
+        url = f"{self._base}/cdn/{version}/data/ja_JP/item.json"
+        data: dict = await self._fetch_json(url)  # type: ignore[assignment]
+        if "data" not in data:
+            raise HTTPException(
+                status_code=502,
+                detail="Data Dragonからアイテムデータを取得できませんでした",
+            )
+        return data["data"]
+
+    async def _fetch_runes(self, version: str) -> list:
+        """Data Dragon runesReforged.json を取得してスタイルリストを返す"""
+        url = f"{self._base}/cdn/{version}/data/ja_JP/runesReforged.json"
+        data: list = await self._fetch_json(url)  # type: ignore[assignment]
+        if not isinstance(data, list) or len(data) == 0:
+            raise HTTPException(
+                status_code=502,
+                detail="Data Dragonからルーンデータを取得できませんでした",
+            )
+        return data
+
+    def _build_item_info(self, version: str, item_id: int, raw: dict) -> ItemInfo:
+        """Data Dragon の生アイテムデータから ItemInfo を生成する"""
+        return ItemInfo(
+            id=item_id,
+            name=raw.get("name", ""),
+            description=self._strip_html(raw.get("description", "")),
+            image_url=f"{self._base}/cdn/{version}/img/item/{item_id}.png",
+            gold_total=raw.get("gold", {}).get("total", 0),
+        )
+
+    def _pick_keystone(self, style: dict) -> RuneInfo:
+        """スタイル辞書からキーストーン（最初のスロットの先頭ルーン）を取得する"""
+        slots = style.get("slots", [])
+        if not slots or not slots[0].get("runes"):
+            raise HTTPException(
+                status_code=502,
+                detail="ルーンスタイルデータの構造が想定外です",
+            )
+        rune = slots[0]["runes"][0]
+        return RuneInfo(
+            id=rune["id"],
+            name=rune.get("name", ""),
+            icon=rune.get("icon", ""),
+            description=self._strip_html(rune.get("longDesc", rune.get("shortDesc", ""))),
+        )
+
+    def _pick_path_rune(self, style: dict) -> RuneInfo:
+        """スタイル辞書からパスルーン（スタイル自体のアイコン・名前）を取得する"""
+        # サブスタイルとして使う場合はスタイルの icon / name を返す
+        # （パスルーン = スタイルのエントリポイントで代用）
+        return RuneInfo(
+            id=style["id"],
+            name=style.get("name", ""),
+            icon=style.get("icon", ""),
+            description=f"{style.get('name', '')} スタイルのパスルーン",
+        )
+
+    async def get_champion_builds(self, champion_id: str) -> BuildRecommendation:
+        """
+        Data Dragon からアイテムとルーンのデータを取得してビルド推奨を構築する。
+
+        チャンピオンのタグ（Fighter/Mage 等）に基づき定義済みアイテムIDとルーンスタイルを選定する。
+        実際のマッチ統計ではなく Data Dragon 公式データを利用する。
+
+        キャッシュキー: "champion_builds:{version}:{champion_id}"
+        TTL: settings.cache_ttl_champion_detail（86400秒）
+        """
+        version = await self.get_latest_version()
+        cache_key = CACHE_KEY_CHAMPION_BUILDS.format(version=version, champion_id=champion_id)
+
+        # キャッシュヒット確認
+        cached = await self._cache.get(cache_key)
+        if cached and isinstance(cached, dict):
+            return BuildRecommendation.model_validate(cached)
+
+        # チャンピオン詳細を取得してタグを特定する
+        champion_detail = await self.get_champion_by_id(champion_id)
+        role_tag = self._resolve_tag(champion_detail.tags)
+
+        # アイテムデータとルーンデータを並行取得
+        items_data, runes_data = await asyncio.gather(
+            self._fetch_items(version),
+            self._fetch_runes(version),
+        )
+
+        # アイテムIDリストに基づいてコアアイテムを選定
+        target_item_ids = _TAG_ITEM_IDS.get(role_tag, _TAG_ITEM_IDS["default"])
+        core_items: list[ItemInfo] = []
+        for item_id in target_item_ids:
+            raw_item = items_data.get(str(item_id))
+            if raw_item is None:
+                logger.warning("アイテムID %d がData Dragonに存在しません（スキップ）", item_id)
+                continue
+            core_items.append(self._build_item_info(version, item_id, raw_item))
+
+        if not core_items:
+            raise HTTPException(
+                status_code=502,
+                detail="推奨アイテムデータを構築できませんでした",
+            )
+
+        # ルーン選定
+        if len(runes_data) < 5:
+            raise HTTPException(
+                status_code=502,
+                detail="ルーンスタイルデータが不足しています",
+            )
+
+        primary_idx = _TAG_PRIMARY_STYLE_IDX.get(role_tag, 0)
+        secondary_idx = _TAG_SECONDARY_STYLE_IDX.get(role_tag, 2)
+
+        # インデックスが範囲外の場合はフォールバック
+        primary_idx = min(primary_idx, len(runes_data) - 1)
+        secondary_idx = min(secondary_idx, len(runes_data) - 1)
+
+        primary_style = runes_data[primary_idx]
+        secondary_style = runes_data[secondary_idx]
+
+        rune_primary = self._pick_keystone(primary_style)
+        rune_secondary = self._pick_path_rune(secondary_style)
+
+        recommendation = BuildRecommendation(
+            champion_id=champion_id,
+            version=version,
+            core_items=core_items,
+            rune_primary=rune_primary,
+            rune_secondary=rune_secondary,
+            source="data_dragon",
+        )
+
+        # キャッシュ保存（24時間、パッチ更新まで不変）
+        await self._cache.set(
+            cache_key,
+            recommendation.model_dump(),
+            settings.cache_ttl_champion_detail,
+        )
+        logger.info(
+            "ビルド推奨をキャッシュに保存: champion=%s, role=%s, version=%s",
+            champion_id,
+            role_tag,
+            version,
+        )
+
+        return recommendation

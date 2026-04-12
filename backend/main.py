@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.cache.redis import CacheClient
 from app.core.config import settings
-from app.routers import champion, match, summoner
+from app.routers import auth, champion, match, stripe, summoner
 
 logging.basicConfig(
     level=settings.log_level.upper(),
@@ -69,9 +69,11 @@ app.add_middleware(
 # -------------------------------------------------------------------
 # ルーター登録
 # -------------------------------------------------------------------
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(champion.router)
 app.include_router(summoner.router)
 app.include_router(match.router)
+app.include_router(stripe.router)
 
 
 @app.get("/", tags=["health"])

@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path
 
 from app.deps import get_champion_service
+from app.models.build import BuildRecommendation
 from app.models.champion import ChampionDetail, ChampionListResponse
 from app.services.champion import ChampionService
 
@@ -47,3 +48,21 @@ async def get_champion(
     service: Annotated[ChampionService, Depends(get_champion_service)],
 ) -> ChampionDetail:
     return await service.get_champion_by_id(champion_id)
+
+
+@router.get(
+    "/{champion_id}/builds",
+    response_model=BuildRecommendation,
+    summary="チャンピオンビルド推奨取得",
+    description=(
+        "指定チャンピオンのロール（Fighter/Mage等）に基づくビルド推奨を返します。"
+        "コアアイテム・キーストーン・サブスタイルルーンを含みます。"
+        "Data Dragon 公式データを元にした推奨であり、マッチ統計ではありません。"
+        "結果は24時間Redisにキャッシュされます。"
+    ),
+)
+async def get_champion_builds(
+    champion_id: Annotated[str, Path(pattern=_CHAMPION_ID_PATTERN, description="チャンピオン英語ID（例: Aatrox）")],
+    service: Annotated[ChampionService, Depends(get_champion_service)],
+) -> BuildRecommendation:
+    return await service.get_champion_builds(champion_id)

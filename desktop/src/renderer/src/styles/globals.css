@@ -1,0 +1,63 @@
+/* TailwindCSS ベース */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* LoLダークテーマ ベースリセット */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background-color: #0a0e1a;
+    color: #ffffff;
+    font-family: 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* ドラッグでテキスト選択を無効化（オーバーレイ向け） */
+    user-select: none;
+  }
+
+  /* スクロールバーのカスタマイズ */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0a0e1a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #1e2a3a;
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2a3a4a;
+  }
+}
+
+/* オーバーレイウィンドウ向け: 背景を透明に */
+body.overlay-mode {
+  background: transparent;
+}
+
+/* LoLゴールドカラー変数 */
+:root {
+  --lol-gold: #c89b3c;
+  --lol-gold-light: #d4a94a;
+  --lol-dark: #0a0e1a;
+  --lol-dark-2: #0f1923;
+  --lol-border: #1e2a3a;
+}

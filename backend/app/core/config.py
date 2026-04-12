@@ -34,6 +34,48 @@ class Settings(BaseSettings):
     jp1_base_url: str = "https://jp1.api.riotgames.com"
     asia_base_url: str = "https://asia.api.riotgames.com"
 
+    # JWT / 認証
+    jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 15   # アクセストークン: 15分
+    jwt_refresh_token_expire_days: int = 90     # リフレッシュトークン: 90日
+
+    @field_validator("jwt_secret_key")
+    @classmethod
+    def jwt_secret_key_must_be_set(cls, v: str) -> str:
+        import os
+        # 開発環境では警告のみ、本番環境では起動を拒否
+        if not v:
+            env = os.getenv("ENV", "development")
+            if env == "production":
+                raise ValueError(
+                    "JWT_SECRET_KEY を設定してください（例: openssl rand -hex 32）"
+                )
+            # 開発環境用のデフォルト値
+            return "dev-only-secret-key-do-not-use-in-production-32chars"
+        if len(v) < 32:
+            raise ValueError("JWT_SECRET_KEY は32文字以上にしてください")
+        return v
+
+    # Google OAuth
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:5173/oauth/callback"
+
+    # Discord OAuth
+    discord_client_id: str = ""
+    discord_client_secret: str = ""
+    discord_redirect_uri: str = "http://localhost:5173/oauth/callback"
+
+    # Stripe 課金
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_monthly_price_id: str = ""
+    stripe_yearly_price_id: str = ""
+
+    # フロントエンドURL（Stripeリダイレクト用）
+    frontend_url: str = "http://localhost:5173"
+
     # キャッシュTTL（秒）
     cache_ttl_summoner: int = 600
     cache_ttl_match_list: int = 3600

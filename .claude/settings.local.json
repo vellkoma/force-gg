@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Skill(schedule)",
-      "Skill(schedule:*)"
+      "Skill(schedule:*)",
+      "Bash(python -m py_compile app/models/build.py app/services/champion.py app/routers/champion.py)",
+      "Bash(python -c \"from passlib.context import CryptContext; ctx = CryptContext\\(schemes=['bcrypt'], deprecated='auto'\\); print\\(ctx.hash\\('dummy'\\)\\)\")",
+      "Bash(python -c ':*)",
+      "Bash(python -c \"import sys; print\\(sys.stdin.read\\(\\)\\)\")",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm show:*)",
+      "Bash(npm run:*)",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist:win)",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false npm run build)",
+      "Bash(npx electron-builder:*)",
+      "Read(//c/Users/asach/AppData/Local/electron-builder/Cache/**)"
     ]
   }
 }

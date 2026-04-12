@@ -88,6 +88,39 @@ export interface ChampionsResponse {
   total?:    number
 }
 
+// バックエンド GET /api/champions/:id のレスポンス（ChampionDetail）
+// Pydantic snake_case でシリアライズされる
+// フィールド名は Pydantic の alias（Data Dragon 形式）でシリアライズされる
+export interface ChampionDetailStats {
+  hp:                   number
+  hpperlevel:           number
+  mp:                   number
+  mpperlevel:           number
+  armor:                number
+  armorperlevel:        number
+  spellblock:           number
+  spellblockperlevel:   number
+  attackdamage:         number
+  attackdamageperlevel: number
+  attackspeed:          number
+  movespeed:            number
+  attackrange:          number
+  crit:                 number
+  critperlevel:         number
+}
+
+export interface ChampionDetailData {
+  id:        string
+  key:       string
+  name:      string
+  title:     string
+  image_url: string
+  tags:      ChampionTag[]
+  blurb:     string
+  stats:     ChampionDetailStats
+  partype:   string
+}
+
 // チャンピオン統計（ランク別勝率等）
 export interface ChampionStats2 {
   championId:  string

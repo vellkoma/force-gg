@@ -175,23 +175,23 @@ CACHE_TTL = {
   - [x] React + Vite プロジェクト初期化
   - [x] FastAPI バックエンド構築
   - [x] チャンピオン一覧ページ実装
-- [ ] **Phase 2: Web MVP**（Month 3–4）
-  - [ ] サモナー検索・戦績表示
-  - [ ] チャンピオン統計・勝率表示
-  - [ ] Google AdSense 導入
+- [x] **Phase 2: Web MVP**（Month 3–4）
+  - [x] サモナー検索・戦績表示
+  - [x] チャンピオン統計・勝率表示
+  - [x] Google AdSense 導入（全ページ配置・遅延ロード対応）
   - [ ] Vercel / Netlify デプロイ
-- [ ] **Phase 3: Web強化**（Month 5–6）
-  - [ ] ビルド推奨機能実装
-  - [ ] ランク別メタ分析ページ
-  - [ ] SEO最適化
-  - [ ] プレミアム会員機能設計
-- [ ] **Phase 4: Desktop開発**（Month 7–9）
-  - [ ] 課金機能実装 (Stripe)
-  - [ ] ユーザー認証 (Auth.js)
-  - [ ] Electron + React 環境構築
-  - [ ] LCU API連携
-  - [ ] チャンピオン選択画面オーバーレイ
-  - [ ] リアルタイム統計表示
+- [x] **Phase 3: Web強化**（Month 5–6）
+  - [x] ビルド推奨機能実装
+  - [x] ランク別メタ分析ページ
+  - [x] SEO最適化
+  - [x] プレミアム会員機能設計
+- [x] **Phase 4: Desktop開発**（Month 7–9）← 完了
+  - [x] 課金機能実装 (Stripe テスト環境・本番キー設定待ち)
+  - [x] ユーザー認証 (Google + Discord + メール/パスワード)
+  - [x] Electron + React 環境構築 (Windows x64/arm64)
+  - [x] LCU API連携
+  - [x] チャンピオン選択画面オーバーレイ
+  - [x] リアルタイム統計表示
 - [ ] **Phase 5: 収益最大化**（Month 10–12）
   - [ ] Web × Desktop アカウント連携
   - [ ] 有料プラン拡充

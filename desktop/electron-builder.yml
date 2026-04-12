@@ -1,0 +1,23 @@
+appId: com.lolguide.desktop
+productName: LoLガイド
+copyright: Copyright © 2024 LoLガイド
+directories:
+  output: release
+files:
+  - out/**/*
+# 開発中はASARを無効化（本番リリース時に有効化・コード署名を設定する）
+asar: false
+win:
+  target:
+    # 開発中: zip（コード署名不要）
+    # 本番リリース時: nsis に戻してコード署名証明書を設定する
+    - target: zip
+      arch:
+        - x64
+  icon: resources/icon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerLanguages:
+    - ja
+  language: 1041

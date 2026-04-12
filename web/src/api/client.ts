@@ -5,18 +5,19 @@ import axios, { type AxiosError } from 'axios'
 // 本番時: VITE_API_URL を設定してバックエンドに直接接続
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '',
-  timeout: 10_000,
+  timeout: 60_000,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// リクエストインターセプター（認証トークン等を後で追加）
+// リクエストインターセプター（認証トークンをヘッダーに付与）
 apiClient.interceptors.request.use(
   (config) => {
-    // Phase 4以降: Auth.jsのJWTトークンをヘッダーに付与
-    // const token = getAuthToken()
-    // if (token) config.headers.Authorization = `Bearer ${token}`
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
     return config
   },
   (error) => Promise.reject(error),
