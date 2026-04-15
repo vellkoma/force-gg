@@ -50,6 +50,8 @@ export interface ElectronAPI {
 
   update: {
     check: () => Promise<unknown>
+    download: () => Promise<void>
+    install: () => Promise<void>
   }
 
   settings: {

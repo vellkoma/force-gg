@@ -1,6 +1,6 @@
-appId: com.lolguide.desktop
-productName: LoLガイド
-copyright: Copyright © 2024 LoLガイド
+appId: gg.force.desktop
+productName: force.gg
+copyright: Copyright © 2024 force.gg
 directories:
   output: release
 files:

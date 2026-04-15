@@ -115,7 +115,7 @@ function createMainWindow(): BrowserWindow {
 function buildMenu(): void {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
-      label: 'LoLガイド',
+      label: 'force.gg',
       submenu: [
         { label: 'バージョン情報', role: 'about' },
         { type: 'separator' },
@@ -166,11 +166,11 @@ function buildMenu(): void {
       submenu: [
         {
           label: '公式サイト',
-          click: () => shell.openExternal('https://lol-guide.jp')
+          click: () => shell.openExternal('https://force.gg')
         },
         {
           label: 'フィードバック',
-          click: () => shell.openExternal('https://github.com/lol-guide/desktop/issues')
+          click: () => shell.openExternal('https://github.com/vellkoma/my-lol-app/issues')
         }
       ]
     }
@@ -258,7 +258,7 @@ function setupAutoUpdater(): void {
 
 app.whenReady().then(() => {
   // Electronのセキュリティ設定
-  electronApp.setAppUserModelId('com.lolguide.desktop')
+  electronApp.setAppUserModelId('gg.force.desktop')
 
   // 開発ツールショートカット（開発時のみ）
   app.on('browser-window-created', (_, window) => {

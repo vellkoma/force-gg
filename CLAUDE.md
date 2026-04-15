@@ -2,8 +2,8 @@
 
 ## プロジェクト概要
 
-日本語LoLプレイヤー向けWebアプリ＆Electronデスクトップアプリ。
-**差別化ポイント**: 日本語UI × AI coaching（Claude API）を組み合わせた唯一のサービス。
+**force.gg** — LoLプレイヤー向けWebアプリ＆Electronデスクトップアプリ。
+**差別化ポイント**: AI coaching（Claude API）× 戦績統計を組み合わせたサービス。
 
 ## 収益化ロードマップ
 
@@ -175,11 +175,11 @@ CACHE_TTL = {
   - [x] React + Vite プロジェクト初期化
   - [x] FastAPI バックエンド構築
   - [x] チャンピオン一覧ページ実装
-- [x] **Phase 2: Web MVP**（Month 3–4）
+- [x] **Phase 2: Web MVP**（Month 3–4）← 完了
   - [x] サモナー検索・戦績表示
   - [x] チャンピオン統計・勝率表示
   - [x] Google AdSense 導入（全ページ配置・遅延ロード対応）
-  - [ ] Vercel / Netlify デプロイ
+  - [x] Vercel / Netlify デプロイ
 - [x] **Phase 3: Web強化**（Month 5–6）
   - [x] ビルド推奨機能実装
   - [x] ランク別メタ分析ページ
@@ -193,8 +193,8 @@ CACHE_TTL = {
   - [x] チャンピオン選択画面オーバーレイ
   - [x] リアルタイム統計表示
 - [ ] **Phase 5: 収益最大化**（Month 10–12）
-  - [ ] Web × Desktop アカウント連携
-  - [ ] 有料プラン拡充
-  - [ ] AI コーチング機能 (Claude API)
-  - [ ] 自動アップデート機能
+  - [x] Web × Desktop アカウント連携
+  - [x] 有料プラン拡充（プレミアム機能ゲート・特典リスト更新）
+  - [ ] AI コーチング機能 (Claude API) ← ANTHROPIC_API_KEY 取得後に実装
+  - [x] 自動アップデート機能（UpdateBanner・download/install IPC）
   - [ ] Windows Store / 直配布

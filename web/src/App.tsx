@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Outlet, NavLink } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -16,6 +16,7 @@ const RegisterPage         = lazy(() => import('@/pages/RegisterPage'))
 const OAuthCallback        = lazy(() => import('@/components/auth/OAuthCallback'))
 const PremiumSuccessPage   = lazy(() => import('@/pages/PremiumSuccessPage'))
 const PremiumCancelPage    = lazy(() => import('@/pages/PremiumCancelPage'))
+const CoachingPage         = lazy(() => import('@/pages/CoachingPage'))
 
 // ルートレイアウト（ヘッダー付き）
 function RootLayout() {
@@ -25,8 +26,34 @@ function RootLayout() {
       <header className="sticky top-0 z-40 bg-[#070B14]/90 border-b border-[#1E2A40] backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <a href="/" className="text-lg font-bold text-[#C89B3C] font-display tracking-wider">
-            LoLガイド
+            force.gg
           </a>
+          <nav className="hidden sm:flex items-center gap-5">
+            <NavLink
+              to="/champions"
+              className={({ isActive }) =>
+                `text-sm transition-colors ${isActive ? 'text-[#C89B3C] font-bold' : 'text-[#C8D8F0] hover:text-[#C89B3C]'}`
+              }
+            >
+              チャンピオン
+            </NavLink>
+            <NavLink
+              to="/meta"
+              className={({ isActive }) =>
+                `text-sm transition-colors ${isActive ? 'text-[#C89B3C] font-bold' : 'text-[#C8D8F0] hover:text-[#C89B3C]'}`
+              }
+            >
+              メタ分析
+            </NavLink>
+            <NavLink
+              to="/coaching"
+              className={({ isActive }) =>
+                `text-sm transition-colors ${isActive ? 'text-[#C89B3C] font-bold' : 'text-[#C8D8F0] hover:text-[#C89B3C]'}`
+              }
+            >
+              AI コーチング
+            </NavLink>
+          </nav>
           <UserMenu />
         </div>
       </header>
@@ -82,6 +109,7 @@ const router = createBrowserRouter([
       { path: '/premium',                       element: <PremiumPage /> },
       { path: '/premium/success',               element: <PremiumSuccessPage /> },
       { path: '/premium/cancel',                element: <PremiumCancelPage /> },
+      { path: '/coaching',                      element: <CoachingPage /> },
     ],
   },
 ])

@@ -9,6 +9,9 @@
 
 import { useEffect, useState } from 'react'
 import { useLcu } from '../hooks/useLcu'
+import { useUpdater } from '../hooks/useUpdater'
+import { UpdateBanner } from '../components/UpdateBanner'
+import { AccountPage } from './AccountPage'
 import type { GameflowPhase } from '../../../types/lcu'
 import type { FavoriteChampion } from '../../../preload/index.d'
 
@@ -41,8 +44,10 @@ const PHASE_COLORS: Record<GameflowPhase, string> = {
 
 export function DesktopHomePage(): JSX.Element {
   const { isConnected, isConnecting, summoner, champSelect, gameflowPhase, connect } = useLcu()
+  const updater = useUpdater()
   const [favorites, setFavorites] = useState<FavoriteChampion[]>([])
   const [version, setVersion] = useState('')
+  const [currentPage, setCurrentPage] = useState<'home' | 'account'>('home')
 
   // お気に入りとバージョン情報を取得
   useEffect(() => {
@@ -59,6 +64,11 @@ export function DesktopHomePage(): JSX.Element {
     }
   }, [gameflowPhase])
 
+  // アカウントページに切り替え
+  if (currentPage === 'account') {
+    return <AccountPage onBack={() => setCurrentPage('home')} />
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0e1a] text-white font-sans">
       {/* ヘッダー */}
@@ -67,10 +77,21 @@ export function DesktopHomePage(): JSX.Element {
           <div className="w-8 h-8 bg-[#c89b3c] rounded-full flex items-center justify-center text-black font-bold text-sm">
             L
           </div>
-          <h1 className="text-lg font-semibold text-[#c89b3c]">LoLガイド デスクトップ</h1>
+          <h1 className="text-lg font-semibold text-[#c89b3c]">force.gg Desktop</h1>
         </div>
-        <span className="text-xs text-gray-500">v{version}</span>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setCurrentPage('account')}
+            className="text-sm text-gray-400 hover:text-[#c89b3c] transition-colors"
+          >
+            アカウント
+          </button>
+          <span className="text-xs text-gray-500">v{version}</span>
+        </div>
       </header>
+
+      {/* アップデートバナー */}
+      <UpdateBanner updater={updater} />
 
       <main className="p-6 space-y-6">
         {/* LCU接続ステータスカード */}

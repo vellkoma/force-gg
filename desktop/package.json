@@ -1,7 +1,7 @@
 {
-  "name": "lol-guide-desktop",
+  "name": "force-gg-desktop",
   "version": "0.1.0",
-  "description": "LoLガイド デスクトップアプリ",
+  "description": "force.gg Desktop",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

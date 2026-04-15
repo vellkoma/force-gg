@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.cache.redis import CacheClient
 from app.core.config import settings
-from app.routers import auth, champion, match, stripe, summoner
+from app.routers import auth, champion, coaching, match, stripe, summoner
 
 logging.basicConfig(
     level=settings.log_level.upper(),
@@ -42,10 +42,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="LoL 日本語サービス API",
+    title="force.gg API",
     description=(
-        "日本語LoLプレイヤー向けWebアプリのバックエンドAPI。"
-        "Riot Games API / Data Dragon を使用してゲームデータを提供します。"
+        "Backend API for force.gg. "
+        "Powered by Riot Games API / Data Dragon."
     ),
     version="0.1.0",
     lifespan=lifespan,
@@ -74,6 +74,7 @@ app.include_router(champion.router)
 app.include_router(summoner.router)
 app.include_router(match.router)
 app.include_router(stripe.router)
+app.include_router(coaching.router)
 
 
 @app.get("/", tags=["health"])
@@ -81,7 +82,7 @@ async def root() -> dict:
     """ヘルスチェック用エンドポイント"""
     return {
         "status": "ok",
-        "service": "LoL 日本語サービス API",
+        "service": "force.gg API",
         "version": "0.1.0",
         "docs": "/docs",
     }

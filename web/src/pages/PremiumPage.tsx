@@ -19,13 +19,14 @@ interface FeatureRow {
 }
 
 const FEATURES: FeatureRow[] = [
-  { label: 'チャンピオン一覧・基本統計',       free: true,        premium: true },
-  { label: 'サモナー検索・戦績表示',           free: '直近5試合', premium: '全件表示' },
-  { label: 'AIチャンピオン選択アドバイス',     free: false,       premium: true },
-  { label: 'デスクトップオーバーレイアプリ',   free: false,       premium: true },
-  { label: '広告非表示',                       free: false,       premium: true },
-  { label: '詳細ビルド推奨',                   free: false,       premium: true },
-  { label: '優先サポート',                     free: false,       premium: true },
+  { label: 'チャンピオン一覧・基本統計',                                       free: true,        premium: true },
+  { label: 'サモナー検索・戦績表示',                                           free: '直近5試合', premium: '全件表示' },
+  { label: 'AI コーチング機能（Claude AI によるパーソナライズドアドバイス）', free: false,       premium: true },
+  { label: 'AIチャンピオン選択アドバイス',                                     free: false,       premium: true },
+  { label: 'デスクトップオーバーレイアプリ',                                   free: false,       premium: true },
+  { label: '広告非表示',                                                       free: false,       premium: true },
+  { label: '詳細ビルド推奨',                                                   free: false,       premium: true },
+  { label: '優先サポート',                                                     free: false,       premium: true },
 ]
 
 // -------------------------------------------------------------------

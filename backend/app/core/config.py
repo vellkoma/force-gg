@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     stripe_monthly_price_id: str = ""
     stripe_yearly_price_id: str = ""
 
+    # Anthropic (Claude API) — AI コーチング機能用
+    # 未設定の場合はモックレスポンスを返す（開発環境でもサービスは起動可能）
+    anthropic_api_key: str = ""
+
     # フロントエンドURL（Stripeリダイレクト用）
     frontend_url: str = "http://localhost:5173"
 

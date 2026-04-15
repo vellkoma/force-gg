@@ -110,6 +110,20 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  /** アップデートをダウンロードする */
+  ipcMain.handle('update:download', async () => {
+    try {
+      await autoUpdater.downloadUpdate()
+    } catch (err) {
+      console.error('[IPC] update:download エラー:', err)
+    }
+  })
+
+  /** ダウンロード完了後にインストールして再起動する */
+  ipcMain.handle('update:install', () => {
+    autoUpdater.quitAndInstall()
+  })
+
   // ---------- 設定 ----------
 
   /** 設定値を取得する */

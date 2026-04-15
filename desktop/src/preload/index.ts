@@ -67,7 +67,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ---------- アップデート ----------
   update: {
     /** アップデートを確認する */
-    check: () => ipcRenderer.invoke('update:check')
+    check: () => ipcRenderer.invoke('update:check'),
+
+    /** アップデートをダウンロードする */
+    download: (): Promise<void> => ipcRenderer.invoke('update:download'),
+
+    /** ダウンロード完了後にインストールして再起動する */
+    install: (): Promise<void> => ipcRenderer.invoke('update:install')
   },
 
   // ---------- 設定 ----------
