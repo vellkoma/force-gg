@@ -2,7 +2,7 @@
  * デスクトップアプリ ダウンロードページ
  */
 
-const GITHUB_RELEASES_URL = 'https://github.com/vellkoma/force-gg/releases/latest'
+const GITHUB_RELEASES_URL = 'https://github.com/vellkoma/force-gg/releases/latest/download/force.gg-Setup-0.1.0.exe'
 
 export default function DownloadPage() {
   return (
