@@ -17,6 +17,7 @@ const OAuthCallback        = lazy(() => import('@/components/auth/OAuthCallback'
 const PremiumSuccessPage   = lazy(() => import('@/pages/PremiumSuccessPage'))
 const PremiumCancelPage    = lazy(() => import('@/pages/PremiumCancelPage'))
 const CoachingPage         = lazy(() => import('@/pages/CoachingPage'))
+const DownloadPage         = lazy(() => import('@/pages/DownloadPage'))
 
 // ルートレイアウト（ヘッダー付き）
 function RootLayout() {
@@ -52,6 +53,14 @@ function RootLayout() {
               }
             >
               AI コーチング
+            </NavLink>
+            <NavLink
+              to="/download"
+              className={({ isActive }) =>
+                `text-sm transition-colors ${isActive ? 'text-[#C89B3C] font-bold' : 'text-[#C8D8F0] hover:text-[#C89B3C]'}`
+              }
+            >
+              デスクトップ
             </NavLink>
           </nav>
           <UserMenu />
@@ -110,6 +119,7 @@ const router = createBrowserRouter([
       { path: '/premium/success',               element: <PremiumSuccessPage /> },
       { path: '/premium/cancel',                element: <PremiumCancelPage /> },
       { path: '/coaching',                      element: <CoachingPage /> },
+      { path: '/download',                      element: <DownloadPage /> },
     ],
   },
 ])
