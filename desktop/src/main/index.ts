@@ -170,7 +170,7 @@ function buildMenu(): void {
         },
         {
           label: 'フィードバック',
-          click: () => shell.openExternal('https://github.com/vellkoma/my-lol-app/issues')
+          click: () => shell.openExternal('https://github.com/vellkoma/force-gg/issues')
         }
       ]
     }
