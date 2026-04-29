@@ -22,7 +22,7 @@ const FEATURES = [
   {
     icon:        '🤖',
     title:       'AIコーチング',
-    description: 'Claude AIがあなたのプレイを分析し、改善ポイントを日本語でアドバイス。（プレミアム機能）',
+    description: 'Claude AIがあなたのプレイを分析し、改善ポイントをアドバイス。（プレミアム機能）',
     href:        '#',
   },
 ] as const
@@ -72,7 +72,7 @@ const HomePage: FC = () => {
       {/* ヒーローセクション */}
       <section className="max-w-6xl mx-auto px-4 py-20 text-center animate-fade-in">
         <p className="text-lol-accent font-display font-semibold text-sm tracking-widest uppercase mb-4">
-          日本語対応 / League of Legends 統計
+          League of Legends 統計 &amp; AI コーチング
         </p>
         <h1 className="font-display font-bold text-4xl sm:text-5xl md:text-6xl text-lol-text mb-6 leading-tight">
           ランクを上げるための
@@ -80,8 +80,8 @@ const HomePage: FC = () => {
           <span className="text-lol-accent">データ</span>がここに
         </h1>
         <p className="text-lol-text-body text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-          チャンピオン統計・サモナー戦績・AIコーチングを完全日本語でお届け。
-          日本サーバー（JP1）のデータに特化しています。
+          チャンピオン統計・サモナー戦績・AIコーチングを一つのプラットフォームで。
+          日本サーバー（JP1）のデータに対応しています。
         </p>
 
         {/* サモナー検索バー */}

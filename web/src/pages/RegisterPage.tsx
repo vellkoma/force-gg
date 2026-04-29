@@ -125,7 +125,7 @@ const RegisterPage: FC = () => {
               LoLガイド
             </h1>
           </Link>
-          <p className="text-[#6B7A99] text-sm">日本語LoLプレイヤー向けWebアプリ</p>
+          <p className="text-[#6B7A99] text-sm">LoL Stats &amp; AI Coaching</p>
         </div>
 
         {/* カード */}
