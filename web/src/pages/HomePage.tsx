@@ -1,8 +1,6 @@
 import type { FC } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { PremiumBadge } from '@/components/ui/PremiumBadge'
 import { SummonerSearchBar } from '@/components/summoner/SummonerSearchBar'
 import { AdBanner } from '@/components/ads/AdBanner'
 
@@ -35,40 +33,7 @@ const HomePage: FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-lol-bg">
-      {/* ナビゲーションバー */}
-      <nav className="border-b border-lol-border bg-lol-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/" className="font-display font-bold text-xl text-lol-accent tracking-wide">
-            LoL Stats JP
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              to="/champions"
-              className="text-sm text-lol-text-body hover:text-lol-accent transition-colors"
-            >
-              チャンピオン
-            </Link>
-            <Link
-              to="/meta"
-              className="text-sm text-lol-text-body hover:text-lol-accent transition-colors"
-            >
-              メタ分析
-            </Link>
-            <Link
-              to="/premium"
-              className="flex items-center gap-1.5 text-sm text-lol-text-body hover:text-lol-accent transition-colors"
-            >
-              プレミアム
-              <PremiumBadge />
-            </Link>
-            <Button variant="secondary" size="sm" disabled>
-              サインイン（準備中）
-            </Button>
-          </div>
-        </div>
-      </nav>
-
+    <div>
       {/* ヒーローセクション */}
       <section className="max-w-6xl mx-auto px-4 py-20 text-center animate-fade-in">
         <p className="text-lol-accent font-display font-semibold text-sm tracking-widest uppercase mb-4">

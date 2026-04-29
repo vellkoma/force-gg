@@ -34,27 +34,7 @@ const ChampionDetailPage: FC = () => {
   }, [champion])
 
   return (
-    <div className="min-h-screen bg-lol-bg">
-      {/* ナビゲーションバー */}
-      <nav className="border-b border-lol-border bg-lol-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/" className="font-display font-bold text-xl text-lol-accent tracking-wide">
-            LoL Stats JP
-          </Link>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="text-sm text-lol-text-body hover:text-lol-accent transition-colors"
-            >
-              ← 戻る
-            </button>
-            <Link to="/champions" className="text-sm text-lol-text-body hover:text-lol-accent transition-colors">
-              チャンピオン一覧
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <div>
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* ローディング */}
         {isLoading && (

@@ -72,22 +72,7 @@ const ChampionsPage: FC = () => {
   }, [data?.champions, searchText, activeRole])
 
   return (
-    <div className="min-h-screen bg-lol-bg">
-      {/* ナビゲーションバー */}
-      <nav className="border-b border-lol-border bg-lol-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-4">
-          <Link
-            to="/"
-            className="font-display font-bold text-xl text-lol-accent tracking-wide
-                       hover:text-lol-text transition-colors"
-          >
-            LoL Stats JP
-          </Link>
-          <span className="text-lol-border" aria-hidden="true">/</span>
-          <span className="text-sm text-lol-text-sub">チャンピオン一覧</span>
-        </div>
-      </nav>
-
+    <div>
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* ページヘッダー */}
         <div className="mb-6">

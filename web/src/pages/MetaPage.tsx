@@ -49,27 +49,7 @@ const MetaPage: FC = () => {
   )
 
   return (
-    <div className="min-h-screen bg-lol-bg">
-      {/* ナビゲーションバー */}
-      <nav className="border-b border-lol-border bg-lol-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/" className="font-display font-bold text-xl text-lol-accent tracking-wide">
-            LoL Stats JP
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link to="/champions" className="text-sm text-lol-text-body hover:text-lol-accent transition-colors">
-              チャンピオン
-            </Link>
-            <Link to="/meta" className="text-sm text-lol-accent font-bold">
-              メタ分析
-            </Link>
-            <Link to="/premium" className="text-sm text-lol-text-body hover:text-lol-accent transition-colors">
-              プレミアム
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <div>
       <div className="max-w-6xl mx-auto px-4 py-10">
         {/* ページタイトル */}
         <div className="mb-8">
