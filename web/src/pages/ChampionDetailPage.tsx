@@ -10,7 +10,8 @@ import { AdBanner } from '@/components/ads/AdBanner'
 
 const ChampionDetailPage: FC = () => {
   const { id } = useParams<{ id: string }>()
-const { data: champion, isLoading, isError } = useQuery<ChampionDetailData>({
+
+  const { data: champion, isLoading, isError } = useQuery<ChampionDetailData>({
     queryKey: ['champion', id],
     queryFn:  () => fetchChampion(id!),
     enabled:  Boolean(id),
