@@ -1,8 +1,10 @@
-import type { FC } from 'react'
+import { useState, type FC, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/Card'
 import { SummonerSearchBar } from '@/components/summoner/SummonerSearchBar'
 import { AdBanner } from '@/components/ads/AdBanner'
+
+type SearchMode = 'summoner' | 'champion'
 
 const FEATURES = [
   {
@@ -27,9 +29,18 @@ const FEATURES = [
 
 const HomePage: FC = () => {
   const navigate = useNavigate()
+  const [mode, setMode]               = useState<SearchMode>('summoner')
+  const [championQuery, setChampionQuery] = useState('')
 
-  const handleSearch = (gameName: string, tagLine: string) => {
+  const handleSummonerSearch = (gameName: string, tagLine: string) => {
     navigate(`/summoner/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`)
+  }
+
+  const handleChampionSearch = (e: FormEvent) => {
+    e.preventDefault()
+    const q = championQuery.trim()
+    if (!q) return
+    navigate(`/champions?q=${encodeURIComponent(q)}`)
   }
 
   return (
@@ -49,9 +60,55 @@ const HomePage: FC = () => {
           日本サーバー（JP1）のデータに対応しています。
         </p>
 
-        {/* サモナー検索バー */}
-        <div className="mb-8">
-          <SummonerSearchBar onSearch={handleSearch} />
+        {/* 検索バー */}
+        <div className="mb-8 w-full max-w-2xl mx-auto">
+          {/* タブ */}
+          <div className="flex mb-3 bg-lol-card border border-lol-border rounded-xl p-1 w-fit mx-auto">
+            <button
+              type="button"
+              onClick={() => setMode('summoner')}
+              className={`px-5 py-1.5 rounded-lg text-sm font-bold transition-all duration-200 ${
+                mode === 'summoner'
+                  ? 'bg-lol-accent text-lol-bg'
+                  : 'text-lol-text-sub hover:text-lol-text'
+              }`}
+            >
+              サモナー
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('champion')}
+              className={`px-5 py-1.5 rounded-lg text-sm font-bold transition-all duration-200 ${
+                mode === 'champion'
+                  ? 'bg-lol-accent text-lol-bg'
+                  : 'text-lol-text-sub hover:text-lol-text'
+              }`}
+            >
+              チャンピオン
+            </button>
+          </div>
+
+          {/* 検索フォーム */}
+          {mode === 'summoner' ? (
+            <SummonerSearchBar onSearch={handleSummonerSearch} />
+          ) : (
+            <form onSubmit={handleChampionSearch} className="flex gap-2">
+              <input
+                type="text"
+                value={championQuery}
+                onChange={(e) => setChampionQuery(e.target.value)}
+                placeholder="チャンピオン名を入力（例: アーリ、Jinx）"
+                aria-label="チャンピオン名を入力"
+                className="flex-1 bg-lol-card border border-lol-border hover:border-lol-border-hover rounded-xl px-4 py-3 text-lol-text placeholder-lol-text-sub text-base outline-none transition-colors duration-200 focus:border-lol-accent focus:ring-1 focus:ring-lol-accent/40"
+              />
+              <button
+                type="submit"
+                className="shrink-0 px-6 py-3 bg-lol-accent text-lol-bg font-bold rounded-xl hover:brightness-110 transition-all duration-200"
+              >
+                検索
+              </button>
+            </form>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
