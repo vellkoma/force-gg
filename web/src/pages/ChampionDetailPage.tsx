@@ -1,5 +1,5 @@
 import { type FC, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchChampion, fetchChampionBuilds } from '@/api/champions'
 import type { ChampionDetailData } from '@/types/champion'
@@ -10,9 +10,7 @@ import { AdBanner } from '@/components/ads/AdBanner'
 
 const ChampionDetailPage: FC = () => {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-
-  const { data: champion, isLoading, isError } = useQuery<ChampionDetailData>({
+const { data: champion, isLoading, isError } = useQuery<ChampionDetailData>({
     queryKey: ['champion', id],
     queryFn:  () => fetchChampion(id!),
     enabled:  Boolean(id),

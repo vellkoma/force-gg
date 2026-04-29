@@ -1,5 +1,5 @@
 import { type FC, useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { SummonerSearchBar }  from '@/components/summoner/SummonerSearchBar'
 import { SummonerProfile, SummonerProfileSkeleton } from '@/components/summoner/SummonerProfile'
 import { MatchCard, MatchCardSkeleton } from '@/components/summoner/MatchCard'

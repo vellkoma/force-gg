@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
 import { useChampions } from '@/hooks/useChampions'
 import type { ChampionListItem, ChampionTag } from '@/types/champion'
 import { Card } from '@/components/ui/Card'

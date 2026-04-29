@@ -1,5 +1,5 @@
 import { type FC, useMemo, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useChampions } from '@/hooks/useChampions'
 import { ChampionGrid } from '@/components/champions/ChampionGrid'
 import type { ChampionTag } from '@/types/champion'
