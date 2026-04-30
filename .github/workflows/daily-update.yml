@@ -11,6 +11,7 @@ jobs:
     steps:
       - name: Trigger update on Railway
         run: |
-          curl -f -X POST "${{ secrets.BACKEND_URL }}/api/esports/admin/update" \
+          curl -v -X POST "${{ secrets.BACKEND_URL }}/api/esports/admin/update" \
             -H "x-update-secret: ${{ secrets.UPDATE_SECRET }}" \
-            --max-time 300
+            --max-time 300 \
+            --fail-with-body
