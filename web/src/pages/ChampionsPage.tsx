@@ -6,7 +6,6 @@ import type { ChampionTag } from '@/types/champion'
 import { CHAMPION_TAG_LABELS } from '@/types/champion'
 import { AdBanner } from '@/components/ads/AdBanner'
 
-// ロールフィルターの選択肢
 type RoleFilter = 'ALL' | ChampionTag
 
 const ROLE_FILTERS: { value: RoleFilter; label: string }[] = [
@@ -25,8 +24,7 @@ const ChampionsPage: FC = () => {
   const { data, isLoading, error } = useChampions()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // URLクエリパラメータからフィルター状態を読み取る
-  const rawRole = searchParams.get('role') ?? 'ALL'
+  const rawRole   = searchParams.get('role') ?? 'ALL'
   const activeRole: RoleFilter = VALID_ROLES.has(rawRole) ? (rawRole as RoleFilter) : 'ALL'
   const searchText = searchParams.get('q') ?? ''
 
@@ -49,80 +47,58 @@ const ChampionsPage: FC = () => {
   }
 
   useEffect(() => {
-    document.title = 'チャンピオン一覧 | LoL Stats JP'
-    return () => { document.title = 'LoL Stats JP' }
+    document.title = 'チャンピオン分析 | force.gg'
+    return () => { document.title = 'force.gg' }
   }, [])
 
-  // フロントエンド側でフィルタリング
   const filtered = useMemo(() => {
     if (!data?.champions) return []
-
     return data.champions.filter((c) => {
       const matchesSearch =
         searchText.trim() === '' ||
         c.name.includes(searchText.trim()) ||
         c.title.includes(searchText.trim()) ||
         c.id.toLowerCase().includes(searchText.trim().toLowerCase())
-
-      const matchesRole =
-        activeRole === 'ALL' || c.tags.includes(activeRole as ChampionTag)
-
+      const matchesRole = activeRole === 'ALL' || c.tags.includes(activeRole as ChampionTag)
       return matchesSearch && matchesRole
     })
   }, [data?.champions, searchText, activeRole])
 
   return (
     <div>
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* ページヘッダー */}
-        <div className="mb-6">
-          <div className="flex items-baseline gap-3">
-            <h1 className="font-display font-bold text-3xl text-lol-text">
-              チャンピオン一覧
-            </h1>
-            {/* チャンピオン数バッジ */}
+      <main className="max-w-7xl mx-auto px-4 py-4">
+        {/* ヘッダー + 検索 + フィルター（1行にまとめる） */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          {/* タイトル */}
+          <div className="flex items-baseline gap-2 shrink-0">
+            <h1 className="font-display font-bold text-xl text-lol-text">チャンピオン分析</h1>
             {!isLoading && data && (
-              <span className="text-sm text-lol-text-sub font-sans">
-                {filtered.length.toLocaleString('ja-JP')} チャンピオン
-                {activeRole !== 'ALL' || searchText
-                  ? ` / 全 ${data.total.toLocaleString('ja-JP')}`
-                  : ''}
+              <span className="text-xs text-lol-text-sub">
+                {filtered.length}{activeRole !== 'ALL' || searchText ? ` / ${data.total}` : ''}体
               </span>
             )}
           </div>
-          <p className="text-lol-text-sub text-sm mt-1">
-            最新パッチ {data?.version ?? '—'} のチャンピオンデータ
-          </p>
-        </div>
 
-        {/* 検索バー + ロールフィルター */}
-        <div className="flex flex-col gap-3 mb-6">
           {/* 検索バー */}
-          <div className="relative max-w-md">
-            <span
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-lol-text-sub text-base pointer-events-none"
-              aria-hidden="true"
+          <div className="relative flex-1 min-w-[160px] max-w-xs">
+            <svg
+              xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+              className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-lol-text-sub pointer-events-none"
             >
-              {/* 検索アイコン（SVG） */}
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
-              </svg>
-            </span>
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+            </svg>
             <input
               type="search"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder="チャンピオン名で検索..."
+              placeholder="チャンピオン名で検索"
               aria-label="チャンピオン名で検索"
-              className="w-full bg-lol-card border border-lol-border rounded-xl
-                         pl-9 pr-4 py-2.5 text-sm text-lol-text placeholder:text-lol-text-sub
-                         focus:outline-none focus:border-lol-accent focus:ring-1 focus:ring-lol-accent
-                         transition-colors"
+              className="w-full bg-lol-card border border-lol-border rounded-lg pl-9 pr-3 py-2 text-sm text-lol-text placeholder:text-lol-text-sub focus:outline-none focus:border-lol-accent focus:ring-1 focus:ring-lol-accent transition-colors"
             />
           </div>
 
-          {/* ロールフィルターボタン */}
-          <div className="flex flex-wrap gap-2" role="group" aria-label="ロールで絞り込む">
+          {/* ロールフィルター */}
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="ロールで絞り込む">
             {ROLE_FILTERS.map(({ value, label }) => (
               <button
                 key={value}
@@ -139,9 +115,16 @@ const ChampionsPage: FC = () => {
               </button>
             ))}
           </div>
+
+          {/* パッチバージョン（右端） */}
+          {data?.version && (
+            <span className="ml-auto text-xs text-lol-text-sub shrink-0 hidden sm:block">
+              パッチ {data.version}
+            </span>
+          )}
         </div>
 
-        {/* 広告（フィルター下・グリッド上） */}
+        {/* 広告 */}
         <AdBanner slot="champions-top" format="horizontal" />
 
         {/* チャンピオングリッド */}

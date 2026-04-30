@@ -19,7 +19,7 @@ interface FeatureRow {
 }
 
 const FEATURES: FeatureRow[] = [
-  { label: 'チャンピオン一覧・基本統計',                                       free: true,        premium: true },
+  { label: 'チャンピオン分析・基本統計',                                       free: true,        premium: true },
   { label: 'サモナー検索・戦績表示',                                           free: '直近5試合', premium: '全件表示' },
   { label: 'AI コーチング機能（Claude AI によるパーソナライズドアドバイス）', free: false,       premium: true },
   { label: 'AIチャンピオン選択アドバイス',                                     free: false,       premium: true },
@@ -151,7 +151,7 @@ const PremiumPage: FC = () => {
         <div className="text-center mb-10">
           <div className="flex items-center justify-center gap-3 mb-4">
             <h1 className="font-display font-bold text-4xl text-lol-text">
-              LoL Stats JP
+              force.gg
             </h1>
             <PremiumBadge className="text-sm px-3 py-1" />
           </div>
@@ -285,7 +285,7 @@ const PremiumPage: FC = () => {
       {/* フッター */}
       <footer className="border-t border-lol-border mt-20 py-8">
         <div className="max-w-6xl mx-auto px-4 text-center text-xs text-lol-text-sub">
-          <p>LoL Stats JP は Riot Games が公認したサービスではありません。</p>
+          <p>force.gg は Riot Games が公認したサービスではありません。</p>
           <p className="mt-1">決済は Stripe を通じて安全に処理されます。</p>
         </div>
       </footer>

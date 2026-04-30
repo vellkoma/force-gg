@@ -14,6 +14,8 @@ backend/**/__pycache__/
 backend/*.pyc
 backend/.venv/
 backend/venv/
+backend/*.db
+backend/img/
 
 # OS
 .DS_Store
@@ -22,3 +24,6 @@ Thumbs.db
 # IDE
 .vscode/settings.json
 *.code-workspace
+
+# ローカルメモ（git管理外）
+DEV.md

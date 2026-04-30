@@ -77,6 +77,12 @@ class Settings(BaseSettings):
     # 未設定の場合はモックレスポンスを返す（開発環境でもサービスは起動可能）
     anthropic_api_key: str = ""
 
+    # PandaScore API — チームアイコン取得用
+    pandascore_api_key: str = ""
+
+    # SQLite DB パス（esports スケジュールキャッシュ用）
+    esports_db_path: str = "esports.db"
+
     # フロントエンドURL（Stripeリダイレクト用）
     frontend_url: str = "http://localhost:5173"
 

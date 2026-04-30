@@ -2,15 +2,13 @@ import { useEffect, useRef } from 'react'
 
 // --- 型定義 ---
 
-type AdFormat = 'auto' | 'rectangle' | 'horizontal' | 'vertical'
+type AdFormat = 'auto' | 'rectangle' | 'horizontal' | 'vertical' | 'billboard'
 
 interface AdBannerProps {
-  /** AdSense 広告スロットID（AdSenseコンソールで発行） */
-  slot: string
-  /** 広告フォーマット（デフォルト: horizontal） */
-  format?: AdFormat
-  /** 追加 TailwindCSS クラス */
+  slot:       string
+  format?:    AdFormat
   className?: string
+  noMargin?:  boolean
 }
 
 // --- フォーマット別サイズ設定 ---
@@ -40,6 +38,11 @@ const FORMAT_CONFIG: Record<AdFormat, {
     insStyle: { display: 'block' },
     label:    '自動広告',
   },
+  billboard: {
+    wrapper:  'w-full',
+    insStyle: { display: 'block', width: '100%', height: '250px' },
+    label:    'ビルボード広告 970×250',
+  },
 }
 
 // --- AdSense スクリプト動的挿入（重複防止） ---
@@ -62,6 +65,7 @@ export const AdBanner = ({
   slot,
   format    = 'horizontal',
   className = '',
+  noMargin  = false,
 }: AdBannerProps) => {
   const clientId    = import.meta.env.VITE_ADSENSE_CLIENT_ID as string | undefined
   const initialized = useRef(false)
@@ -93,7 +97,7 @@ export const AdBanner = ({
   // --- 開発環境: プレースホルダー表示 ---
   if (isDev) {
     return (
-      <div className={`${config.wrapper} my-4 ${className}`}>
+      <div className={`${config.wrapper} ${noMargin ? '' : 'my-4'} ${className}`}>
         <div
           className="mx-auto rounded-lg bg-lol-card border border-dashed border-lol-border/50
                      flex flex-col items-center justify-center gap-1 opacity-50"
@@ -111,7 +115,7 @@ export const AdBanner = ({
 
   // --- 本番環境: AdSense ins タグ ---
   return (
-    <div className={`${config.wrapper} my-4 ${className}`}>
+    <div className={`${config.wrapper} ${noMargin ? '' : 'my-4'} ${className}`}>
       <ins
         className="adsbygoogle"
         style={config.insStyle}

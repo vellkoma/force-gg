@@ -44,7 +44,7 @@ export const ChampionGrid: FC<Props> = ({ champions, isLoading, error }) => {
     return (
       <div
         className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-        aria-label="チャンピオン一覧 読み込み中"
+        aria-label="チャンピオン分析 読み込み中"
         aria-busy="true"
       >
         {Array.from({ length: 24 }).map((_, i) => (
@@ -67,7 +67,7 @@ export const ChampionGrid: FC<Props> = ({ champions, isLoading, error }) => {
   return (
     <div
       className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-      aria-label="チャンピオン一覧"
+      aria-label="チャンピオン分析"
     >
       {champions.map((champion) => (
         <ChampionCard key={champion.id} champion={champion} />

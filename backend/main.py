@@ -2,21 +2,28 @@
 FastAPI アプリケーションエントリポイント
 CORS設定・ライフサイクル管理・ルーター登録を行う
 """
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.cache.redis import CacheClient
 from app.core.config import settings
-from app.routers import auth, champion, coaching, match, stripe, summoner
+from app.routers import auth, champion, coaching, esports, match, stripe, summoner
+from app.services import esports_db
+from app.services.esports_status import status_check_loop
 
 logging.basicConfig(
     level=settings.log_level.upper(),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+# httpx のリクエストログを抑制（ノイズ対策）
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
@@ -35,11 +42,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("キャッシュバックエンド: %s", cache.backend)
 
+    # Esports DB 初期化 + 試合中ステータス監視タスク起動
+    await esports_db.init_db()
+    status_task = asyncio.create_task(status_check_loop())
+    app.state.status_task = status_task
+
     yield  # アプリ実行中
 
     logger.info("バックエンドサーバーをシャットダウンしています...")
+    status_task.cancel()
     await cache.disconnect()
 
+
+import os
+os.makedirs("img/leagues", exist_ok=True)
+os.makedirs("img/teams",   exist_ok=True)
 
 app = FastAPI(
     title="force.gg API",
@@ -52,6 +69,8 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+app.mount("/img", StaticFiles(directory="img"), name="img")
 
 # -------------------------------------------------------------------
 # CORS設定
@@ -75,6 +94,7 @@ app.include_router(summoner.router)
 app.include_router(match.router)
 app.include_router(stripe.router)
 app.include_router(coaching.router)
+app.include_router(esports.router)
 
 
 @app.get("/", tags=["health"])

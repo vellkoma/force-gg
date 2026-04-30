@@ -103,11 +103,11 @@ const SummonerPage: FC = () => {
 
   useEffect(() => {
     if (gameName) {
-      document.title = `${decodeURIComponent(gameName)} の戦績 | LoL Stats JP`
+      document.title = `${decodeURIComponent(gameName)} の戦績 | force.gg`
     } else {
-      document.title = 'サモナー検索 | LoL Stats JP'
+      document.title = 'サモナー検索 | force.gg'
     }
-    return () => { document.title = 'LoL Stats JP' }
+    return () => { document.title = 'force.gg' }
   }, [gameName])
 
   const handleSearch = (name: string, tag: string) => {
@@ -174,7 +174,7 @@ const SummonerPage: FC = () => {
       {/* フッター */}
       <footer className="border-t border-lol-border mt-20 py-8">
         <div className="max-w-4xl mx-auto px-4 text-center text-xs text-lol-text-sub space-y-1">
-          <p>LoL Stats JP は Riot Games が公認したサービスではありません。</p>
+          <p>force.gg は Riot Games が公認したサービスではありません。</p>
         </div>
       </footer>
     </div>

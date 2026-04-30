@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import UserMenu from '@/components/auth/UserMenu'
+import { BottomStickyAd } from '@/components/ads/BottomStickyAd'
 
 // ページの遅延ロード（コード分割）
 const HomePage          = lazy(() => import('@/pages/HomePage'))
@@ -36,7 +37,7 @@ function RootLayout() {
                 `text-sm transition-colors ${isActive ? 'text-[#C89B3C] font-bold' : 'text-[#C8D8F0] hover:text-[#C89B3C]'}`
               }
             >
-              チャンピオン
+              チャンピオン分析
             </NavLink>
             <NavLink
               to="/meta"
@@ -76,6 +77,8 @@ function RootLayout() {
       >
         <Outlet />
       </Suspense>
+
+      <BottomStickyAd />
     </div>
   )
 }
