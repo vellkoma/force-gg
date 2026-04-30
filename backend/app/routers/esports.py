@@ -1,11 +1,13 @@
 """
 Esports スケジュール エンドポイント（Leaguepedia ベース）
 """
+import asyncio
 import logging
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
 
+from app.core.config import settings
 from app.services import esports_db as db
 from app.services.esports_sync import LEAGUE_CONFIG
 
@@ -166,3 +168,18 @@ def _fmt_games(games: list[dict]) -> list[dict]:
         }
         for g in games
     ]
+
+
+@router.post("/admin/update", summary="日次データ更新トリガー（GitHub Actions から呼び出す）")
+async def trigger_update(x_update_secret: str = Header(...)) -> JSONResponse:
+    if x_update_secret != settings.update_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    async def _run() -> None:
+        import sys, os
+        sys.path.insert(0, ".")
+        from update import main as update_main
+        await update_main()
+
+    asyncio.create_task(_run())
+    return JSONResponse({"status": "started"})

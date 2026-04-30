@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # PandaScore API — チームアイコン取得用
     pandascore_api_key: str = ""
 
+    # 日次更新トリガー用シークレット（GitHub Actions → /api/esports/admin/update）
+    update_secret: str = ""
+
     # SQLite DB パス（esports スケジュールキャッシュ用）
     esports_db_path: str = "esports.db"
 
