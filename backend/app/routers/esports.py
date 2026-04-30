@@ -170,6 +170,21 @@ def _fmt_games(games: list[dict]) -> list[dict]:
     ]
 
 
+@router.get("/leagues", summary="リーグ一覧とアイコンURL")
+async def get_leagues() -> JSONResponse:
+    icons = await db.get_league_icons()
+    leagues = [
+        {
+            "id":       str(league_id),
+            "name":     cfg["name"],
+            "hl":       cfg["hl"],
+            "icon_url": icons.get(cfg["name"], ""),
+        }
+        for league_id, cfg in LEAGUE_CONFIG.items()
+    ]
+    return JSONResponse(leagues)
+
+
 @router.post("/admin/update", summary="日次データ更新トリガー（GitHub Actions から呼び出す）")
 async def trigger_update(x_update_secret: str = Header(...)) -> JSONResponse:
     if x_update_secret != settings.update_secret:

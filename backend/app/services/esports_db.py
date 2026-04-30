@@ -77,6 +77,14 @@ async def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_game_players_game
                 ON esports_game_players (game_id)
         """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS esports_league_icons (
+                league_name TEXT PRIMARY KEY,
+                icon_url    TEXT NOT NULL,
+                updated_at  TEXT NOT NULL
+            )
+        """)
+
         # source カラム追加（既存DBとの互換性維持）
         try:
             await db.execute(
@@ -190,6 +198,23 @@ async def upsert_game_players(game_id: int, players: list[dict[str, Any]]) -> No
                 ),
             )
         await db.commit()
+
+
+async def upsert_league_icon(league_name: str, icon_url: str) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(_DB_PATH) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO esports_league_icons (league_name, icon_url, updated_at) VALUES (?,?,?)",
+            (league_name, icon_url, now),
+        )
+        await db.commit()
+
+
+async def get_league_icons() -> dict[str, str]:
+    async with aiosqlite.connect(_DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT league_name, icon_url FROM esports_league_icons") as cur:
+            return {row["league_name"]: row["icon_url"] async for row in cur}
 
 
 async def get_match_by_id(match_id: int) -> dict[str, Any] | None:

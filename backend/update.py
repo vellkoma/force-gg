@@ -34,19 +34,15 @@ PANDASCORE_API = "https://api.pandascore.co"
 # ─── リーグアイコン ────────────────────────────────────────────
 
 async def update_league_icons() -> None:
-    os.makedirs("img/leagues", exist_ok=True)
     token = settings.pandascore_api_key
     if not token:
         logger.warning("PANDASCORE_API_KEY 未設定 - リーグアイコンをスキップ")
         return
 
-    auth    = {"Authorization": f"Bearer {token}"}
-    ok      = 0
+    auth = {"Authorization": f"Bearer {token}"}
+    ok   = 0
 
-    async with (
-        httpx.AsyncClient(headers=auth, timeout=15) as api,
-        httpx.AsyncClient(timeout=15) as dl,
-    ):
+    async with httpx.AsyncClient(headers=auth, timeout=15) as api:
         for league_id, cfg in LEAGUE_CONFIG.items():
             name = cfg["name"]
             try:
@@ -60,17 +56,9 @@ async def update_league_icons() -> None:
                         break
 
                 if img_url:
-                    ri = await dl.get(img_url, follow_redirects=True)
-                    if ri.status_code == 200 and len(ri.content) > 200:
-                        ct  = ri.headers.get("content-type", "")
-                        ext = ".webp" if "webp" in ct else (".jpg" if "jpeg" in ct else ".png")
-                        path = f"img/leagues/{name}{ext}"
-                        with open(path, "wb") as f:
-                            f.write(ri.content)
-                        logger.info("  リーグアイコン: %s → %s (%dKB)", name, path, len(ri.content) // 1024)
-                        ok += 1
-                    else:
-                        logger.warning("  リーグアイコン DL 失敗: %s status=%d", name, ri.status_code)
+                    await db.upsert_league_icon(name, img_url)
+                    logger.info("  リーグアイコン: %s → DB保存", name)
+                    ok += 1
                 else:
                     logger.warning("  リーグアイコン未検出: %s", name)
 

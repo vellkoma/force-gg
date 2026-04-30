@@ -337,23 +337,39 @@ const MatchRow: FC<{
   )
 }
 
-// ─── リーグ定義 ───────────────────────────────────────────
-const LEAGUES = [
-  { id: '98767991349978712',  name: 'LJL',   hl: 'ja-JP', logo: `${API_BASE}/img/leagues/LJL.png`   },
-  { id: '98767991310872058',  name: 'LCK',   hl: 'ko-KR', logo: `${API_BASE}/img/leagues/LCK.png`   },
-  { id: '98767991299243165',  name: 'LCS',   hl: 'en-US', logo: `${API_BASE}/img/leagues/LCS.png`   },
-  { id: '98767991302996019',  name: 'LEC',   hl: 'en-GB', logo: `${API_BASE}/img/leagues/LEC.png`   },
-  { id: '98767991314006698',  name: 'LPL',   hl: 'zh-CN', logo: `${API_BASE}/img/leagues/LPL.png`   },
-  { id: '98767991332355509',  name: 'CBLOL', hl: 'pt-BR', logo: `${API_BASE}/img/leagues/CBLOL.png` },
-  { id: '113476371197627891', name: 'LCP',   hl: 'en-US', logo: `${API_BASE}/img/leagues/LCP.png`   },
-  { id: '104366947889790212', name: 'PCS',   hl: 'en-US', logo: `${API_BASE}/img/leagues/PCS.png`   },
-] as const
+// ─── リーグ定義（フォールバック用） ──────────────────────
+const LEAGUES_FALLBACK = [
+  { id: '98767991349978712',  name: 'LJL',   hl: 'ja-JP', icon_url: '' },
+  { id: '98767991310872058',  name: 'LCK',   hl: 'ko-KR', icon_url: '' },
+  { id: '98767991299243165',  name: 'LCS',   hl: 'en-US', icon_url: '' },
+  { id: '98767991302996019',  name: 'LEC',   hl: 'en-GB', icon_url: '' },
+  { id: '98767991314006698',  name: 'LPL',   hl: 'zh-CN', icon_url: '' },
+  { id: '98767991332355509',  name: 'CBLOL', hl: 'pt-BR', icon_url: '' },
+  { id: '113476371197627891', name: 'LCP',   hl: 'en-US', icon_url: '' },
+  { id: '104366947889790212', name: 'PCS',   hl: 'en-US', icon_url: '' },
+]
+
+interface LeagueInfo { id: string; name: string; hl: string; icon_url: string }
+
+async function fetchLeagues(): Promise<LeagueInfo[]> {
+  const res = await fetch(`${API_BASE}/api/esports/leagues`)
+  if (!res.ok) return LEAGUES_FALLBACK
+  return res.json()
+}
 
 // ─── メインコンポーネント ──────────────────────────────────
 export const EsportsSchedule: FC = () => {
   const { leagueId: defaultLeagueId } = useLocale()
-  const defaultLeague = LEAGUES.find(l => l.id === defaultLeagueId) ?? LEAGUES[0]
-  const [selectedLeague, setSelectedLeague] = useState(defaultLeague)
+
+  const { data: leagues = LEAGUES_FALLBACK } = useQuery({
+    queryKey:  ['esports-leagues'],
+    queryFn:   fetchLeagues,
+    staleTime: 24 * 60 * 60 * 1000,
+  })
+
+  const defaultLeague = leagues.find(l => l.id === defaultLeagueId) ?? leagues[0]
+  const [selectedLeague, setSelectedLeague] = useState<LeagueInfo | null>(null)
+  const currentLeague = selectedLeague ?? defaultLeague
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const scrollRef        = useRef<HTMLDivElement>(null)
   const firstUpcomingRef = useRef<HTMLDivElement>(null)
@@ -362,8 +378,8 @@ export const EsportsSchedule: FC = () => {
   const queryClient = useQueryClient()
 
   const { data, isLoading, isError } = useQuery({
-    queryKey:   ['esports-schedule', selectedLeague.id],
-    queryFn:    () => fetchSchedule(selectedLeague.id, selectedLeague.hl),
+    queryKey:   ['esports-schedule', currentLeague.id],
+    queryFn:    () => fetchSchedule(currentLeague.id, currentLeague.hl),
     staleTime:  0,
     retry:      1,
     // syncing中は15秒ごとに自動リフレッシュ
@@ -382,7 +398,7 @@ export const EsportsSchedule: FC = () => {
   })
 
   // リーグ切り替え時にスクロールリセット・展開閉じる・キャッシュ無効化
-  const handleSelectLeague = (league: typeof LEAGUES[number]) => {
+  const handleSelectLeague = (league: LeagueInfo) => {
     setSelectedLeague(league)
     setExpandedId(null)
     if (scrollRef.current) scrollRef.current.scrollTop = 0
@@ -415,7 +431,7 @@ export const EsportsSchedule: FC = () => {
               <span className="w-2 h-2 rounded-full bg-lol-accent" />
               <h2 className="font-display font-bold text-sm text-lol-text">プロシーン スケジュール</h2>
             </div>
-            <a href={`https://lolesports.com/schedule?leagues=${selectedLeague.name.toLowerCase()}`}
+            <a href={`https://lolesports.com/schedule?leagues=${currentLeague.name.toLowerCase()}`}
               target="_blank" rel="noopener noreferrer"
               className="text-xs text-lol-accent hover:underline">
               すべて見る →
@@ -432,20 +448,20 @@ export const EsportsSchedule: FC = () => {
                 onClick={() => handleSelectLeague(league)}
                 className={`
                   relative shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-colors
-                  ${selectedLeague.id === league.id
+                  ${currentLeague.id === league.id
                     ? 'text-lol-accent'
                     : 'text-lol-text-sub hover:text-lol-text'
                   }
                 `}
               >
                 <img
-                  src={league.logo}
+                  src={league.icon_url}
                   alt={league.name}
-                  className={`w-4 h-4 object-contain shrink-0 ${selectedLeague.id === league.id ? 'opacity-100' : 'opacity-50'}`}
+                  className={`w-4 h-4 object-contain shrink-0 ${currentLeague.id === league.id ? 'opacity-100' : 'opacity-50'}`}
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                 />
                 {league.name}
-                {selectedLeague.id === league.id && (
+                {currentLeague.id === league.id && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-lol-accent rounded-full" />
                 )}
               </button>
@@ -467,7 +483,7 @@ export const EsportsSchedule: FC = () => {
           {isError && (
             <div className="flex flex-col items-center gap-2 py-8 text-center">
               <p className="text-lol-text-sub text-sm">スケジュールを取得できませんでした</p>
-              <a href={`https://lolesports.com/schedule?leagues=${selectedLeague.name.toLowerCase()}`}
+              <a href={`https://lolesports.com/schedule?leagues=${currentLeague.name.toLowerCase()}`}
                 target="_blank" rel="noopener noreferrer"
                 className="text-xs text-lol-accent hover:underline">
                 lolesports.com で確認 →
