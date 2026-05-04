@@ -109,7 +109,7 @@ async def _cargo_query(params: dict, _retry: int = 3) -> list[dict]:
         if "error" in data:
             code = data["error"].get("code", "")
             if code == "ratelimited" and attempt < _retry - 1:
-                wait = 10 * (attempt + 1)  # 10s, 20s, 30s
+                wait = 30 * (attempt + 1)  # 30s, 60s, 90s
                 logger.warning("Leaguepedia レートリミット: %ds 待機 (attempt %d)", wait, attempt + 1)
                 await asyncio.sleep(wait)
                 continue

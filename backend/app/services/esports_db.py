@@ -253,11 +253,12 @@ async def get_matches(league_id: int, limit: int = 15) -> list[dict[str, Any]]:
     """
     async with aiosqlite.connect(_DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        # 完了: 直近10件を古い順で返す（時系列表示用）
+        # 完了: 直近10件を古い順で返す（時系列表示用）、1年以内のみ
         async with db.execute(
             """
             SELECT * FROM esports_matches
             WHERE league_id = ? AND status IN ('finished','canceled')
+              AND begin_at >= datetime('now', '-1 year')
             ORDER BY begin_at DESC LIMIT 10
             """,
             (league_id,),

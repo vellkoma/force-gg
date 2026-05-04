@@ -257,7 +257,7 @@ const MatchRow: FC<{
         {/* 日時 */}
         <div className="w-12 shrink-0">
           <p className="text-[10px] text-lol-text-sub leading-tight">
-            {date.toLocaleDateString(dateLocale, { month: 'numeric', day: 'numeric' })}
+            {date.toLocaleDateString(dateLocale, { year: 'numeric', month: 'numeric', day: 'numeric' })}
           </p>
           <p className="text-xs font-bold text-lol-text leading-tight">
             {date.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })}
@@ -442,7 +442,7 @@ export const EsportsSchedule: FC = () => {
             ref={tabsRef}
             className="flex overflow-x-auto scrollbar-none px-2 pb-0 gap-0.5"
           >
-            {LEAGUES.map(league => (
+            {leagues.map(league => (
               <button
                 key={league.id}
                 onClick={() => handleSelectLeague(league)}

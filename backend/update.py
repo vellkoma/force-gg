@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 
+import aiosqlite
 import httpx
 
 sys.path.insert(0, ".")
@@ -26,7 +27,7 @@ from app.core.config import settings
 from app.services import esports_db as db
 from app.services import pandascore as ps
 from app.services.esports_sync import LEAGUE_CONFIG, _parse_match
-from app.services.leaguepedia import fetch_schedule, fetch_schedule_from_scoreboard
+from app.services.leaguepedia import fetch_schedule, fetch_schedule_from_scoreboard, fetch_team_logos
 
 PANDASCORE_API = "https://api.pandascore.co"
 
@@ -75,8 +76,15 @@ async def update_league_schedule(league_id: int, cfg: dict) -> int:
     name  = cfg["name"]
     wiki  = cfg["wiki"]
 
-    # PandaScore 優先
+    # PandaScore 優先（最新試合が1年以上前なら古いデータとみなしてスキップ）
+    from datetime import datetime, timedelta, timezone
     matches = await ps.fetch_schedule(name, league_id)
+    if matches:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=365)).isoformat()
+        newest_begin = max(m["begin_at"] for m in matches)
+        if newest_begin < cutoff:
+            logger.info("  PandaScore データが古すぎる (%s) → スキップ: %s", newest_begin[:10], name)
+            matches = []
 
     # Leaguepedia フォールバック
     if not matches:
@@ -85,10 +93,14 @@ async def update_league_schedule(league_id: int, cfg: dict) -> int:
         dt_now = datetime.now(timezone.utc)
         season = "Spring" if dt_now.month <= 6 else "Summer"
 
-        rows = await fetch_schedule(wiki, dt_now.year, season)
-        if not rows:
-            rows = await fetch_schedule_from_scoreboard(wiki, dt_now.year)
-        matches = [m for m in (_parse_match(r, league_id) for r in rows) if m]
+        for try_year in (dt_now.year, dt_now.year - 1):
+            rows = await fetch_schedule(wiki, try_year, season)
+            if not rows:
+                rows = await fetch_schedule_from_scoreboard(wiki, try_year)
+            matches = [m for m in (_parse_match(r, league_id) for r in rows) if m]
+            if matches:
+                logger.info("  %s: %d年データ取得", name, try_year)
+                break
 
     if not matches:
         logger.info("  %s: データなし", name)
@@ -99,6 +111,48 @@ async def update_league_schedule(league_id: int, cfg: dict) -> int:
     source = matches[0].get("source", "leaguepedia")
     logger.info("  %s: %d 件 upsert (source=%s)", name, len(matches), source)
     return len(matches)
+
+
+# ─── チームロゴ補完 ────────────────────────────────────────────
+
+async def update_team_logos() -> None:
+    """DBのチームアイコンが空のレコードをLeaguepediaから一括補完する"""
+    async with aiosqlite.connect(db._DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        async with conn.execute(
+            "SELECT DISTINCT team1_name FROM esports_matches WHERE team1_image_url = '' OR team1_image_url IS NULL"
+        ) as cur:
+            names1 = [row[0] async for row in cur]
+        async with conn.execute(
+            "SELECT DISTINCT team2_name FROM esports_matches WHERE team2_image_url = '' OR team2_image_url IS NULL"
+        ) as cur:
+            names2 = [row[0] async for row in cur]
+
+    team_names = list(set(names1 + names2))
+    if not team_names:
+        logger.info("  チームロゴ補完不要")
+        return
+
+    logger.info("  ロゴ未取得チーム: %d件", len(team_names))
+    # Leaguepedia レートリミット回避（スケジュール取得で消費した後の回復待ち）
+    await asyncio.sleep(60)
+    logos = await fetch_team_logos(team_names)
+    if not logos:
+        logger.warning("  チームロゴ取得失敗（次回更新時に再試行）")
+        return
+
+    async with aiosqlite.connect(db._DB_PATH) as conn:
+        for name, url in logos.items():
+            await conn.execute(
+                "UPDATE esports_matches SET team1_image_url = ? WHERE team1_name = ? AND (team1_image_url = '' OR team1_image_url IS NULL)",
+                (url, name),
+            )
+            await conn.execute(
+                "UPDATE esports_matches SET team2_image_url = ? WHERE team2_name = ? AND (team2_image_url = '' OR team2_image_url IS NULL)",
+                (url, name),
+            )
+        await conn.commit()
+    logger.info("  チームロゴ補完: %d チーム", len(logos))
 
 
 # ─── メイン ───────────────────────────────────────────────────
@@ -119,6 +173,10 @@ async def main() -> None:
         count = await update_league_schedule(league_id, cfg)
         total += count
         await asyncio.sleep(1)
+
+    # チームロゴ補完（全リーグまとめて取得でレートリミット回避）
+    logger.info("--- チームロゴ補完 ---")
+    await update_team_logos()
 
     logger.info("=== 完了: スケジュール合計 %d 件 ===", total)
 
