@@ -104,13 +104,13 @@ async def update_league_schedule(league_id: int, cfg: dict) -> int:
 
     if not matches:
         logger.info("  %s: データなし", name)
-        return 0
+        return 0, "none"
 
     await db.upsert_matches(matches)
     await db.update_sync_log(league_id)
     source = matches[0].get("source", "leaguepedia")
     logger.info("  %s: %d 件 upsert (source=%s)", name, len(matches), source)
-    return len(matches)
+    return len(matches), source
 
 
 # ─── チームロゴ補完 ────────────────────────────────────────────
@@ -166,13 +166,15 @@ async def main() -> None:
     logger.info("--- リーグアイコン更新 ---")
     await update_league_icons()
 
-    # スケジュール（リーグ間 1 秒待機）
+    # スケジュール（Leaguepediaフォールバック後は長めに待機）
     logger.info("--- スケジュール更新 ---")
     total = 0
     for league_id, cfg in LEAGUE_CONFIG.items():
-        count = await update_league_schedule(league_id, cfg)
+        count, source = await update_league_schedule(league_id, cfg)
         total += count
-        await asyncio.sleep(1)
+        # Leaguepediaを使った後は30秒待機してレートリミット回避
+        wait = 30 if source == "leaguepedia" else 2
+        await asyncio.sleep(wait)
 
     # チームロゴ補完（全リーグまとめて取得でレートリミット回避）
     logger.info("--- チームロゴ補完 ---")

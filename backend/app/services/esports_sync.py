@@ -9,7 +9,7 @@ from typing import Any
 LEAGUE_CONFIG: dict[int, dict] = {
     98767991349978712:  {"name": "LJL",   "wiki": "LJL",   "hl": "ja-JP"},
     98767991310872058:  {"name": "LCK",   "wiki": "LCK",   "hl": "ko-KR"},
-    98767991299243165:  {"name": "LCS",   "wiki": "LCS",   "hl": "en-US"},
+    98767991299243165:  {"name": "LCS",   "wiki": "LTA North", "hl": "en-US"},
     98767991302996019:  {"name": "LEC",   "wiki": "LEC",   "hl": "en-GB"},
     98767991314006698:  {"name": "LPL",   "wiki": "LPL",   "hl": "zh-CN"},
     98767991332355509:  {"name": "CBLOL", "wiki": "CBLOL", "hl": "pt-BR"},
