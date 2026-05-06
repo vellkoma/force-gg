@@ -101,6 +101,97 @@ async def init_db() -> None:
         await db.execute(
             "DELETE FROM esports_sync_log WHERE league_id < 1000000000000000"
         )
+        # チャンピオン統計集計テーブル
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS champion_stats_aggregate (
+                champion_name TEXT NOT NULL,
+                position      TEXT NOT NULL,
+                patch         TEXT NOT NULL,
+                rank_group    TEXT NOT NULL DEFAULT 'CHALLENGER',
+                wins          INTEGER DEFAULT 0,
+                picks         INTEGER DEFAULT 0,
+                bans          INTEGER DEFAULT 0,
+                total_games   INTEGER DEFAULT 0,
+                updated_at    TEXT NOT NULL,
+                PRIMARY KEY (champion_name, position, patch, rank_group)
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS champion_stats_meta (
+                patch       TEXT NOT NULL,
+                rank_group  TEXT NOT NULL DEFAULT 'CHALLENGER',
+                total_games INTEGER DEFAULT 0,
+                updated_at  TEXT NOT NULL,
+                PRIMARY KEY (patch, rank_group)
+            )
+        """)
+
+        # マイグレーション: rank_group カラムが存在しない場合は既存データを移行
+        try:
+            async with db.execute("PRAGMA table_info(champion_stats_aggregate)") as cur:
+                cols = [row[1] async for row in cur]
+            if "rank_group" not in cols:
+                await db.execute(
+                    "ALTER TABLE champion_stats_aggregate RENAME TO _csa_old"
+                )
+                await db.execute("""
+                    CREATE TABLE champion_stats_aggregate (
+                        champion_name TEXT NOT NULL,
+                        position      TEXT NOT NULL,
+                        patch         TEXT NOT NULL,
+                        rank_group    TEXT NOT NULL DEFAULT 'CHALLENGER',
+                        wins          INTEGER DEFAULT 0,
+                        picks         INTEGER DEFAULT 0,
+                        bans          INTEGER DEFAULT 0,
+                        total_games   INTEGER DEFAULT 0,
+                        updated_at    TEXT NOT NULL,
+                        PRIMARY KEY (champion_name, position, patch, rank_group)
+                    )
+                """)
+                await db.execute("""
+                    INSERT INTO champion_stats_aggregate
+                        (champion_name, position, patch, rank_group, wins, picks, bans, total_games, updated_at)
+                    SELECT champion_name, position, patch, 'CHALLENGER', wins, picks, bans, total_games, updated_at
+                    FROM _csa_old
+                """)
+                await db.execute("DROP TABLE _csa_old")
+                logger.info("champion_stats_aggregate: rank_group カラムを追加してマイグレーション完了")
+        except Exception as e:
+            logger.warning("champion_stats_aggregate マイグレーションスキップ: %s", e)
+
+        try:
+            async with db.execute("PRAGMA table_info(champion_stats_meta)") as cur:
+                cols = [row[1] async for row in cur]
+            if "rank_group" not in cols:
+                await db.execute("DROP TABLE IF EXISTS champion_stats_meta")
+                await db.execute("""
+                    CREATE TABLE champion_stats_meta (
+                        patch       TEXT NOT NULL,
+                        rank_group  TEXT NOT NULL DEFAULT 'CHALLENGER',
+                        total_games INTEGER DEFAULT 0,
+                        updated_at  TEXT NOT NULL,
+                        PRIMARY KEY (patch, rank_group)
+                    )
+                """)
+                logger.info("champion_stats_meta: rank_group カラムを追加して再作成")
+        except Exception as e:
+            logger.warning("champion_stats_meta マイグレーションスキップ: %s", e)
+
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS champion_item_stats (
+                champion_name TEXT    NOT NULL,
+                position      TEXT    NOT NULL,
+                patch         TEXT    NOT NULL,
+                rank_group    TEXT    NOT NULL DEFAULT 'CHALLENGER',
+                slot          INTEGER NOT NULL,
+                item_id       INTEGER NOT NULL,
+                item_count    INTEGER DEFAULT 0,
+                total_picks   INTEGER DEFAULT 0,
+                updated_at    TEXT    NOT NULL,
+                PRIMARY KEY (champion_name, position, patch, rank_group, slot, item_id)
+            )
+        """)
+
         await db.commit()
     logger.info("Esports DB 初期化完了: %s", _DB_PATH)
 
@@ -280,3 +371,189 @@ async def get_matches(league_id: int, limit: int = 15) -> list[dict[str, Any]]:
     pending = [m for m in upcoming if m["status"] == "not_started"]
     # 時系列: 過去(古→新) → 進行中 → 未開始
     return finished + running + pending
+
+
+# ─── チャンピオン統計集計 ──────────────────────────────────────────
+
+async def upsert_champion_stats(rows: list[dict[str, Any]]) -> None:
+    async with aiosqlite.connect(_DB_PATH) as db:
+        for r in rows:
+            await db.execute(
+                """
+                INSERT OR REPLACE INTO champion_stats_aggregate
+                  (champion_name, position, patch, rank_group, wins, picks, bans, total_games, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    r["champion_name"], r["position"], r["patch"],
+                    r.get("rank_group", "CHALLENGER"),
+                    r["wins"], r["picks"], r["bans"], r["total_games"], r["updated_at"],
+                ),
+            )
+        await db.commit()
+
+
+async def upsert_champion_stats_meta(patch: str, total_games: int, updated_at: str, rank_group: str = "CHALLENGER") -> None:
+    async with aiosqlite.connect(_DB_PATH) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO champion_stats_meta (patch, rank_group, total_games, updated_at) VALUES (?,?,?,?)",
+            (patch, rank_group, total_games, updated_at),
+        )
+        await db.commit()
+
+
+async def get_latest_patch(rank_group: str = "CHALLENGER") -> str | None:
+    async with aiosqlite.connect(_DB_PATH) as db:
+        async with db.execute(
+            "SELECT patch FROM champion_stats_meta WHERE rank_group = ? ORDER BY updated_at DESC LIMIT 1",
+            (rank_group,),
+        ) as cur:
+            row = await cur.fetchone()
+    return row[0] if row else None
+
+
+async def get_rank_game_counts() -> list[dict[str, Any]]:
+    """各ランク帯の最新パッチにおける total_games を返す"""
+    async with aiosqlite.connect(_DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT rank_group, total_games, patch
+            FROM champion_stats_meta
+            WHERE (rank_group, updated_at) IN (
+                SELECT rank_group, MAX(updated_at)
+                FROM champion_stats_meta
+                GROUP BY rank_group
+            )
+            """
+        ) as cur:
+            return [dict(row) async for row in cur]
+
+
+async def get_available_patches(rank_group: str = "CHALLENGER") -> list[str]:
+    async with aiosqlite.connect(_DB_PATH) as db:
+        async with db.execute(
+            "SELECT DISTINCT patch FROM champion_stats_meta WHERE rank_group = ? ORDER BY patch DESC",
+            (rank_group,),
+        ) as cur:
+            return [row[0] async for row in cur]
+
+
+async def get_champion_stats_latest(
+    rank_group: str = "CHALLENGER",
+    patch: str | None = None,
+    position: str | None = None,
+) -> list[dict[str, Any]]:
+    if patch is None:
+        patch = await get_latest_patch(rank_group)
+    if not patch:
+        return []
+    async with aiosqlite.connect(_DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        if position and position != "ALL":
+            async with db.execute(
+                "SELECT * FROM champion_stats_aggregate WHERE patch = ? AND rank_group = ? AND position = ?",
+                (patch, rank_group, position),
+            ) as cur:
+                return [dict(row) async for row in cur]
+        async with db.execute(
+            "SELECT * FROM champion_stats_aggregate WHERE patch = ? AND rank_group = ?",
+            (patch, rank_group),
+        ) as cur:
+            return [dict(row) async for row in cur]
+
+
+async def upsert_champion_item_stats(rows: list[dict[str, Any]]) -> None:
+    async with aiosqlite.connect(_DB_PATH) as db:
+        for r in rows:
+            await db.execute(
+                """
+                INSERT OR REPLACE INTO champion_item_stats
+                  (champion_name, position, patch, rank_group, slot, item_id, item_count, total_picks, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    r["champion_name"], r["position"], r["patch"],
+                    r.get("rank_group", "CHALLENGER"),
+                    r["slot"], r["item_id"], r["item_count"],
+                    r["total_picks"], r["updated_at"],
+                ),
+            )
+        await db.commit()
+
+
+async def get_champion_item_stats(
+    champion_name: str,
+    rank_group: str = "CHALLENGER",
+    patch: str | None = None,
+    position: str | None = None,
+) -> list[dict[str, Any]]:
+    if patch is None:
+        patch = await get_latest_patch(rank_group)
+    if not patch:
+        return []
+    async with aiosqlite.connect(_DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        if position and position not in ("ALL", ""):
+            async with db.execute(
+                """
+                SELECT slot, item_id, SUM(item_count) AS item_count, SUM(total_picks) AS total_picks
+                FROM champion_item_stats
+                WHERE champion_name = ? AND patch = ? AND rank_group = ? AND position = ?
+                GROUP BY slot, item_id
+                ORDER BY slot ASC, item_count DESC
+                """,
+                (champion_name, patch, rank_group, position),
+            ) as cur:
+                return [dict(row) async for row in cur]
+        async with db.execute(
+            """
+            SELECT slot, item_id, SUM(item_count) AS item_count, SUM(total_picks) AS total_picks
+            FROM champion_item_stats
+            WHERE champion_name = ? AND patch = ? AND rank_group = ?
+            GROUP BY slot, item_id
+            ORDER BY slot ASC, item_count DESC
+            """,
+            (champion_name, patch, rank_group),
+        ) as cur:
+            return [dict(row) async for row in cur]
+
+
+async def get_champion_patch_history(
+    champion_name: str,
+    rank_group: str = "CHALLENGER",
+) -> list[dict[str, Any]]:
+    """チャンピオンのパッチ別勝率履歴（全ポジション集計）"""
+    async with aiosqlite.connect(_DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT
+                a.patch,
+                SUM(a.wins)  AS total_wins,
+                SUM(a.picks) AS total_picks,
+                MAX(a.bans)  AS bans,
+                m.total_games
+            FROM champion_stats_aggregate a
+            JOIN champion_stats_meta m ON m.patch = a.patch AND m.rank_group = a.rank_group
+            WHERE a.champion_name = ? AND a.rank_group = ?
+            GROUP BY a.patch
+            ORDER BY a.patch ASC
+            """,
+            (champion_name, rank_group),
+        ) as cur:
+            return [dict(row) async for row in cur]
+
+
+async def get_champion_stats_single(champion_name: str, rank_group: str = "CHALLENGER", patch: str | None = None) -> list[dict[str, Any]]:
+    if patch is None:
+        patch = await get_latest_patch(rank_group)
+    if not patch:
+        return []
+    async with aiosqlite.connect(_DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM champion_stats_aggregate WHERE champion_name = ? AND patch = ? AND rank_group = ? ORDER BY picks DESC",
+            (champion_name, patch, rank_group),
+        ) as cur:
+            return [dict(row) async for row in cur]

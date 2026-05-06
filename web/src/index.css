@@ -7,6 +7,7 @@
     font-family: 'Noto Sans JP', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scrollbar-gutter: stable; /* スクロールバー出現時のレイアウトシフト防止 */
   }
 
   body {

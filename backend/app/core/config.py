@@ -83,8 +83,8 @@ class Settings(BaseSettings):
     # 日次更新トリガー用シークレット（GitHub Actions → /api/esports/admin/update）
     update_secret: str = ""
 
-    # SQLite DB パス（esports スケジュールキャッシュ用）
-    esports_db_path: str = "esports.db"
+    # SQLite DB パス（LoL esports・チャンピオン統計用）
+    esports_db_path: str = "LOL.db"
 
     # フロントエンドURL（Stripeリダイレクト用）
     frontend_url: str = "http://localhost:5173"

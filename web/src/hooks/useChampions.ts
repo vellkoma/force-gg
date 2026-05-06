@@ -1,14 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchChampions, fetchChampion, fetchChampionStats } from '@/api/champions'
-import type { ChampionListItem, ChampionStats2 } from '@/types/champion'
+import { fetchChampions, fetchChampion, fetchAllChampionStats, fetchSingleChampionStats, fetchAvailablePatches, fetchRankQuality, fetchChampionPatchHistory, fetchChampionItemStats } from '@/api/champions'
+import type { ChampionListItem } from '@/types/champion'
 
-// クエリキー定数（型安全なキャッシュ管理）
 export const championKeys = {
-  all:        ['champions']              as const,
-  lists:      () => [...championKeys.all, 'list']     as const,
-  detail:     (id: string) => [...championKeys.all, 'detail', id]  as const,
-  stats:      (id: string, params: Pick<ChampionStats2, never>) =>
-                [...championKeys.all, 'stats', id, params]         as const,
+  all:         ['champions']              as const,
+  lists:       () => [...championKeys.all, 'list']     as const,
+  detail:      (id: string) => [...championKeys.all, 'detail', id]  as const,
+  patches:     (rank: string) => [...championKeys.all, 'patches', rank] as const,
+  rankQuality: () => [...championKeys.all, 'rank-quality'] as const,
+  statsAll:    (rank: string, patch?: string, pos?: string) => [...championKeys.all, 'stats-all', rank, patch ?? 'latest', pos ?? 'ALL'] as const,
+  statsSingle: (id: string, rank: string) => [...championKeys.all, 'stats', id, rank] as const,
 } as const
 
 /**
@@ -50,21 +51,82 @@ export function useChampion(id: string | undefined) {
 }
 
 /**
- * チャンピオン統計フック
- * @param id    チャンピオンID
- * @param queue キュータイプ（デフォルト: RANKED_SOLO_5x5）
- * @param tier  ランク帯（デフォルト: ALL）
+ * 利用可能なパッチ一覧フック
  */
-export function useChampionStats(
+export function useRankQuality() {
+  return useQuery({
+    queryKey:  championKeys.rankQuality(),
+    queryFn:   fetchRankQuality,
+    staleTime: 60 * 60 * 1000,
+    gcTime:    60 * 60 * 1000,
+  })
+}
+
+export function useAvailablePatches(rank = 'CHALLENGER') {
+  return useQuery({
+    queryKey:  championKeys.patches(rank),
+    queryFn:   () => fetchAvailablePatches(rank),
+    staleTime: 60 * 60 * 1000,
+    gcTime:    60 * 60 * 1000,
+  })
+}
+
+/**
+ * 全チャンピオンティアリスト統計フック
+ * @param rank  ランク帯
+ * @param patch パッチ番号（省略時は最新）
+ */
+export function useAllChampionStats(rank = 'CHALLENGER', patch?: string, position?: string) {
+  return useQuery({
+    queryKey:  championKeys.statsAll(rank, patch, position),
+    queryFn:   () => fetchAllChampionStats(rank, patch, position),
+    staleTime: 60 * 60 * 1000,
+    gcTime:    60 * 60 * 1000,
+  })
+}
+
+/**
+ * チャンピオン単体ポジション別統計フック
+ * @param id   チャンピオンID
+ * @param rank ランク帯
+ */
+export function useChampionPositionStats(id: string | undefined, rank = 'PLATINUM_PLUS') {
+  return useQuery({
+    queryKey:  championKeys.statsSingle(id ?? '', rank),
+    queryFn:   () => fetchSingleChampionStats(id!, rank),
+    enabled:   Boolean(id),
+    staleTime: 60 * 60 * 1000,
+    gcTime:    60 * 60 * 1000,
+  })
+}
+
+/**
+ * チャンピオンのパッチ別勝率履歴フック
+ */
+export function useChampionPatchHistory(id: string | undefined, rank = 'CHALLENGER') {
+  return useQuery({
+    queryKey:  [...championKeys.all, 'patch-history', id ?? '', rank] as const,
+    queryFn:   () => fetchChampionPatchHistory(id!, rank),
+    enabled:   Boolean(id),
+    staleTime: 60 * 60 * 1000,
+    gcTime:    60 * 60 * 1000,
+  })
+}
+
+/**
+ * チャンピオンのスロット別アイテム統計フック
+ */
+export function useChampionItemStats(
   id: string | undefined,
-  queue = 'RANKED_SOLO_5x5',
-  tier  = 'ALL',
+  rank = 'CHALLENGER',
+  patch?: string,
+  position?: string,
 ) {
   return useQuery({
-    queryKey:  [...championKeys.detail(id ?? ''), 'stats', queue, tier],
-    queryFn:   () => fetchChampionStats(id!, { queue, tier }),
+    queryKey:  [...championKeys.all, 'items', id ?? '', rank, patch ?? 'latest', position ?? 'ALL'] as const,
+    queryFn:   () => fetchChampionItemStats(id!, rank, patch, position),
     enabled:   Boolean(id),
-    staleTime: 60 * 60 * 1000,  // 1時間（統計データは頻繁に変わらない）
+    staleTime: 60 * 60 * 1000,
     gcTime:    60 * 60 * 1000,
   })
 }

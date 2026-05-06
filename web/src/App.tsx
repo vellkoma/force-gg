@@ -75,7 +75,10 @@ function RootLayout() {
           </div>
         }
       >
-        <Outlet />
+        {/* BottomStickyAd（高さ約106px）に隠れないよう全ページに下余白 */}
+        <div className="pb-32">
+          <Outlet />
+        </div>
       </Suspense>
 
       <BottomStickyAd />

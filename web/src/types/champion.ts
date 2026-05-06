@@ -121,16 +121,74 @@ export interface ChampionDetailData {
   partype:   string
 }
 
-// チャンピオン統計（ランク別勝率等）
+// チャンピオン統計（ランク別勝率等）- 旧型（後方互換）
 export interface ChampionStats2 {
   championId:  string
-  winRate:     number   // 0.0〜1.0
+  winRate:     number
   pickRate:    number
   banRate:     number
   avgKills:    number
   avgDeaths:   number
   avgAssists:  number
   gamesPlayed: number
-  tier:        string   // "S+", "S", "A", "B", "C"
-  rank:        number   // チャンピオン内のランキング
+  tier:        string
+  rank:        number
+}
+
+// Meraki Analytics ベースのティアリスト統計（GET /api/champions/stats）
+export interface ChampionStatsSummary {
+  champion_id:   string
+  tier:          string   // "S+", "S", "A", "B", "C"
+  rank:          number
+  win_rate:      number   // 0.0〜1.0
+  pick_rate:     number
+  ban_rate:      number
+  best_position: string   // "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT"
+  games_played:  number
+}
+
+// ポジション別統計（GET /api/champions/{id}/stats）
+export interface PositionStats {
+  position:    string
+  win_rate:    number
+  pick_rate:   number
+  ban_rate:    number
+  games_played: number
+}
+
+export const TIER_COLORS: Record<string, string> = {
+  'S+': '#e8a838',
+  'S':  '#c69b3a',
+  'A':  '#4ade80',
+  'B':  '#60a5fa',
+  'C':  '#94a3b8',
+}
+
+export const POSITION_LABELS: Record<string, string> = {
+  TOP:     'トップ',
+  JUNGLE:  'ジャングル',
+  MID:     'ミッド',
+  ADC:     'ADC',
+  SUPPORT: 'サポート',
+}
+
+// パッチ別勝率履歴
+export interface PatchWinRate {
+  patch:        string
+  win_rate:     number
+  pick_rate:    number
+  games_played: number
+}
+
+// アイテム別ピック率
+export interface ItemPickRate {
+  item_id:   number
+  pick_rate: number
+  count:     number
+}
+
+// スロット別アイテム統計
+export interface ItemSlotStats {
+  slot:  number
+  items: ItemPickRate[]
 }

@@ -1,12 +1,39 @@
 """
 日次データ更新スクリプト
 - 全8リーグのスケジュールを PandaScore（→ Leaguepedia フォールバック）から取得して DB に upsert
-- リーグアイコンを PandaScore から取得して img/leagues/ に保存
+- リーグアイコンを PandaScore から取得して DB に保存
 - チームアイコンは PandaScore CDN URL をそのまま DB に保存（ローカル保存不要）
 
-実行: python update.py  (backend/ ディレクトリで)
+オプション:
+  -S, --skip-schedule       スケジュール・リーグアイコン・チームロゴの取得をスキップ
+  -s, --skip-champion-stats チャンピオン統計集計をスキップ
+  -c, --champion-stats-only チャンピオン統計集計のみ実行（-S の短縮形）
+  -r, --rank RANK           収集するランク帯（デフォルト: CHALLENGER）
+                            選択肢: CHALLENGER / GRANDMASTER / MASTER /
+                                    DIAMOND / EMERALD / PLATINUM / GOLD /
+                                    SILVER / BRONZE / IRON
+                            ※ DIAMOND 以下は本番 API キーが必要（開発キーは 403）
+  --rank-all                全ランク帯を順番に収集（-r より優先）
+                            ※ DIAMOND 以下は本番 API キーが必要
+  -p, --patch PATCH         収集対象パッチ（例: 16.9）。省略時は最新パッチ
+                            指定すると該当パッチのマッチのみ集計してDBに保存
+
+実行例:
+  python update.py                          # すべて実行（チャレンジャーデータ・最新パッチ）
+  python update.py -c                       # チャンピオン統計のみ（チャレンジャー・最新パッチ）
+  python update.py -c -r GOLD              # チャンピオン統計のみ（ゴールド帯）
+  python update.py -c -r PLATINUM          # チャンピオン統計のみ（プラチナ帯）
+  python update.py -c -p 16.9              # チャンピオン統計のみ（パッチ 16.9 指定）
+  python update.py -c -r GOLD -p 16.9     # ゴールド帯 × パッチ 16.9 指定
+  python update.py -c --rank-all           # 全ランク帯・最新パッチ
+  python update.py -c --rank-all -p 16.9  # 全ランク帯 × パッチ 16.9 指定
+  python update.py -S                       # スケジュール・アイコンのみ（統計スキップ）
+  python update.py -s                       # スケジュール・アイコンのみ（統計スキップ）
+  python update.py -s -r DIAMOND           # スケジュール更新 + ダイヤ帯統計集計
+
 推奨: タスクスケジューラー / cron で毎日早朝に実行
 """
+import argparse
 import asyncio
 import logging
 import os
@@ -28,6 +55,8 @@ from app.services import esports_db as db
 from app.services import pandascore as ps
 from app.services.esports_sync import LEAGUE_CONFIG, _parse_match
 from app.services.leaguepedia import fetch_schedule, fetch_schedule_from_scoreboard, fetch_team_logos
+from app.services.champion_stats_aggregator import collect_and_store_stats
+from app.services.riot_client import RiotClient
 
 PANDASCORE_API = "https://api.pandascore.co"
 
@@ -44,7 +73,7 @@ async def update_league_icons() -> None:
     ok   = 0
 
     async with httpx.AsyncClient(headers=auth, timeout=15) as api:
-        for league_id, cfg in LEAGUE_CONFIG.items():
+        for _, cfg in LEAGUE_CONFIG.items():
             name = cfg["name"]
             try:
                 r = await api.get(f"{PANDASCORE_API}/lol/leagues",
@@ -157,31 +186,87 @@ async def update_team_logos() -> None:
 
 # ─── メイン ───────────────────────────────────────────────────
 
-async def main() -> None:
+_ALL_RANKS = ["CHALLENGER","GRANDMASTER","MASTER","DIAMOND","EMERALD","PLATINUM","GOLD","SILVER","BRONZE","IRON"]
+
+
+async def main(skip_schedule: bool = False, skip_champion_stats: bool = False, rank_group: str = "CHALLENGER", patch: str | None = None, rank_all: bool = False) -> None:
     logger.info("=== force.gg 日次更新 開始 ===")
 
     await db.init_db()
 
-    # リーグアイコン
-    logger.info("--- リーグアイコン更新 ---")
-    await update_league_icons()
-
-    # スケジュール（Leaguepediaフォールバック後は長めに待機）
-    logger.info("--- スケジュール更新 ---")
     total = 0
-    for league_id, cfg in LEAGUE_CONFIG.items():
-        count, source = await update_league_schedule(league_id, cfg)
-        total += count
-        # Leaguepediaを使った後は30秒待機してレートリミット回避
-        wait = 30 if source == "leaguepedia" else 2
-        await asyncio.sleep(wait)
 
-    # チームロゴ補完（全リーグまとめて取得でレートリミット回避）
-    logger.info("--- チームロゴ補完 ---")
-    await update_team_logos()
+    if not skip_schedule:
+        # リーグアイコン
+        logger.info("--- リーグアイコン更新 ---")
+        await update_league_icons()
+
+        # スケジュール（Leaguepediaフォールバック後は長めに待機）
+        logger.info("--- スケジュール更新 ---")
+        for league_id, cfg in LEAGUE_CONFIG.items():
+            count, source = await update_league_schedule(league_id, cfg)
+            total += count
+            wait = 30 if source == "leaguepedia" else 2
+            await asyncio.sleep(wait)
+
+        # チームロゴ補完（全リーグまとめて取得でレートリミット回避）
+        logger.info("--- チームロゴ補完 ---")
+        await update_team_logos()
+    else:
+        logger.info("--- スケジュール・アイコン更新 スキップ ---")
+
+    if not skip_champion_stats:
+        # チャンピオン統計集計（Riot APIキーが設定されている場合のみ）
+        logger.info("--- チャンピオン統計集計 ---")
+        if settings.riot_api_key:
+            riot = RiotClient()
+            ranks_to_collect = _ALL_RANKS if rank_all else [rank_group]
+            for rg in ranks_to_collect:
+                await collect_and_store_stats(riot, rg, patch)
+        else:
+            logger.warning("RIOT_API_KEY 未設定 - チャンピオン統計集計をスキップ")
+    else:
+        logger.info("--- チャンピオン統計集計 スキップ ---")
 
     logger.info("=== 完了: スケジュール合計 %d 件 ===", total)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description="force.gg 日次データ更新")
+    parser.add_argument(
+        "-S", "--skip-schedule",
+        action="store_true",
+        help="スケジュール・リーグアイコン・チームロゴの取得をスキップ",
+    )
+    parser.add_argument(
+        "-s", "--skip-champion-stats",
+        action="store_true",
+        help="チャンピオン統計集計をスキップ",
+    )
+    parser.add_argument(
+        "-c", "--champion-stats-only",
+        action="store_true",
+        help="チャンピオン統計集計のみ実行",
+    )
+    parser.add_argument(
+        "-r", "--rank",
+        default="CHALLENGER",
+        choices=["CHALLENGER","GRANDMASTER","MASTER","DIAMOND","EMERALD","PLATINUM","GOLD","SILVER","BRONZE","IRON"],
+        help="収集するランク帯（デフォルト: CHALLENGER）",
+    )
+    parser.add_argument(
+        "-p", "--patch",
+        default=None,
+        help="収集対象パッチ（例: 16.9）。省略時は最新パッチ",
+    )
+    parser.add_argument(
+        "--rank-all",
+        action="store_true",
+        help="全ランク帯を順番に収集（DIAMOND以下は本番APIキーが必要）",
+    )
+    args = parser.parse_args()
+
+    skip_schedule = args.skip_schedule or args.champion_stats_only
+    skip_champion_stats = args.skip_champion_stats
+
+    asyncio.run(main(skip_schedule=skip_schedule, skip_champion_stats=skip_champion_stats, rank_group=args.rank, patch=args.patch, rank_all=args.rank_all))

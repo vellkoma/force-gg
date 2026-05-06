@@ -11,6 +11,10 @@ app-update.yml
 .DS_Store
 Thumbs.db
 
+# 環境変数（本番URLを含む）
+.env.production
+.env.local
+
 # ローカルDB（開発時）
 *.db
 *.db-shm

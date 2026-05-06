@@ -142,6 +142,55 @@ class RiotClient:
     # League API (JP1)
     # ------------------------------------------------------------------
 
+    async def get_summoner_by_id(self, summoner_id: str) -> dict:
+        """
+        サモナーIDからサモナー情報（PUUID含む）を取得する
+        エンドポイント: GET {JP1}/lol/summoner/v4/summoners/{summonerId}
+        """
+        url = f"{self._jp1}/lol/summoner/v4/summoners/{summoner_id}"
+        result = await self._get(url)
+        return result  # type: ignore[return-value]
+
+    async def get_challenger_league(self, queue: str = "RANKED_SOLO_5x5") -> dict:
+        """
+        チャレンジャーリーグのエントリ一覧を取得する
+        エンドポイント: GET {JP1}/lol/league/v4/challengerleagues/by-queue/{queue}
+        戻り値: {tier, leagueId, queue, name, entries: [{summonerId, leaguePoints, ...}]}
+        """
+        url = f"{self._jp1}/lol/league/v4/challengerleagues/by-queue/{queue}"
+        result = await self._get(url)
+        return result  # type: ignore[return-value]
+
+    async def get_grandmaster_league(self, queue: str = "RANKED_SOLO_5x5") -> dict:
+        """
+        グランドマスターリーグのエントリ一覧を取得する
+        エンドポイント: GET {JP1}/lol/league/v4/grandmasterleagues/by-queue/{queue}
+        """
+        url = f"{self._jp1}/lol/league/v4/grandmasterleagues/by-queue/{queue}"
+        result = await self._get(url)
+        return result  # type: ignore[return-value]
+
+    async def get_master_league(self, queue: str = "RANKED_SOLO_5x5") -> dict:
+        """
+        マスターリーグのエントリ一覧を取得する
+        エンドポイント: GET {JP1}/lol/league/v4/masterleagues/by-queue/{queue}
+        """
+        url = f"{self._jp1}/lol/league/v4/masterleagues/by-queue/{queue}"
+        result = await self._get(url)
+        return result  # type: ignore[return-value]
+
+    async def get_league_entries(
+        self, tier: str, division: str = "I", queue: str = "RANKED_SOLO_5x5", page: int = 1
+    ) -> list:
+        """
+        指定ティア・ディビジョンのランクエントリ一覧を取得する
+        エンドポイント: GET {JP1}/lol/league/v4/entries/{tier}/{division}
+        tier: DIAMOND, EMERALD, PLATINUM, GOLD, SILVER, BRONZE, IRON
+        """
+        url = f"{self._jp1}/lol/league/v4/entries/{tier}/{division}?queue={queue}&page={page}"
+        result = await self._get(url)
+        return result  # type: ignore[return-value]
+
     async def get_ranked_stats(self, summoner_id: str) -> list:
         """
         サモナーIDからランク情報一覧を取得する

@@ -58,3 +58,47 @@ class ChampionListResponse(BaseModel):
     version: str = Field(..., description="Data Dragon バージョン（例: 14.24.1）")
     total: int = Field(..., description="チャンピオン総数")
     champions: list[ChampionSummary]
+
+
+class ChampionStatsSummary(BaseModel):
+    """GET /api/champions/stats の1件分"""
+
+    champion_id: str = Field(..., description="チャンピオン英語ID")
+    tier: str = Field(..., description="ティア（S+/S/A/B/C）")
+    rank: int = Field(..., description="ティアリスト内順位")
+    win_rate: float = Field(..., description="勝率 (0.0〜1.0)")
+    pick_rate: float = Field(..., description="ピック率")
+    ban_rate: float = Field(..., description="バン率")
+    best_position: str = Field(..., description="最多採用ポジション")
+    games_played: int = Field(..., description="ゲーム数")
+
+
+class PositionStats(BaseModel):
+    """GET /api/champions/{id}/stats の1ポジション分"""
+
+    position: str = Field(..., description="ポジション（TOP/JUNGLE/MID/ADC/SUPPORT）")
+    win_rate: float = Field(..., description="勝率")
+    pick_rate: float = Field(..., description="ピック率")
+    ban_rate: float = Field(..., description="バン率")
+    games_played: int = Field(..., description="ゲーム数")
+
+
+class PatchWinRate(BaseModel):
+    """パッチ別勝率履歴の1ポイント"""
+    patch:        str   = Field(..., description="パッチ番号（例: 16.9.1）")
+    win_rate:     float = Field(..., description="勝率")
+    pick_rate:    float = Field(..., description="ピック率")
+    games_played: int   = Field(..., description="ゲーム数")
+
+
+class ItemPickRate(BaseModel):
+    """アイテム別ピック率"""
+    item_id:   int   = Field(..., description="DDragon アイテムID")
+    pick_rate: float = Field(..., description="そのスロットでのピック率")
+    count:     int   = Field(..., description="ピック数")
+
+
+class ItemSlotStats(BaseModel):
+    """スロット別アイテム統計"""
+    slot:  int           = Field(..., description="インベントリスロット番号（0〜5）")
+    items: list[ItemPickRate] = Field(default_factory=list)

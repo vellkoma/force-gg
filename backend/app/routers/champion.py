@@ -1,16 +1,34 @@
 """
 チャンピオン関連エンドポイント
-GET /api/champions         - 全チャンピオン一覧（日本語名付き）
-GET /api/champions/{id}   - チャンピオン詳細
+GET /api/champions              - 全チャンピオン一覧（日本語名付き）
+GET /api/champions/stats        - 全チャンピオン統計（ティアリスト）
+GET /api/champions/{id}         - チャンピオン詳細
+GET /api/champions/{id}/stats   - チャンピオン単体ポジション別統計
+GET /api/champions/{id}/builds  - チャンピオンビルド推奨
 """
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, Query
 
-from app.deps import get_champion_service
+from app.deps import get_cache, get_champion_service
 from app.models.build import BuildRecommendation
-from app.models.champion import ChampionDetail, ChampionListResponse
+from app.models.champion import (
+    ChampionDetail,
+    ChampionListResponse,
+    ChampionStatsSummary,
+    PositionStats,
+    PatchWinRate,
+    ItemSlotStats,
+)
 from app.services.champion import ChampionService
+from app.services.champion_stats import (
+    get_all_champion_stats,
+    get_single_champion_stats,
+    get_available_patches,
+    get_rank_quality,
+    get_champion_patch_history,
+    get_champion_item_stats,
+)
 
 router = APIRouter(prefix="/api/champions", tags=["champion"])
 
@@ -35,6 +53,49 @@ async def list_champions(
 
 
 @router.get(
+    "/patches",
+    response_model=list[str],
+    summary="利用可能なパッチ一覧",
+    description="指定ランク帯でデータが存在するパッチ番号の一覧を返します（新しい順）。",
+)
+async def list_champion_patches(
+    rank: Annotated[str, Query(description="ランク帯")] = "CHALLENGER",
+    cache=Depends(get_cache),
+) -> list[str]:
+    return await get_available_patches(rank, cache)
+
+
+@router.get(
+    "/rank-quality",
+    response_model=list[dict],
+    summary="ランク帯別データ品質",
+    description="各ランク帯の最新パッチにおける試合数を返します。1000件未満はデータ不足の目安です。",
+)
+async def list_rank_quality(cache=Depends(get_cache)) -> list[dict]:
+    return await get_rank_quality(cache)
+
+
+@router.get(
+    "/stats",
+    response_model=list[ChampionStatsSummary],
+    summary="全チャンピオン統計（ティアリスト）",
+    description=(
+        "全チャンピオンの勝率・ピック率・バン率・ティアを取得します。"
+        "rank でランク帯、patch でパッチ番号を指定可能（省略時は最新パッチ）。"
+        "結果は1時間Redisにキャッシュされます。"
+    ),
+)
+async def list_champion_stats(
+    rank:     Annotated[str, Query(description="ランク帯")] = "CHALLENGER",
+    patch:    Annotated[str | None, Query(description="パッチ番号（例: 16.9）")] = None,
+    position: Annotated[str | None, Query(description="ポジション（TOP/JUNGLE/MID/ADC/SUPPORT）")] = None,
+    cache=Depends(get_cache),
+) -> list[ChampionStatsSummary]:
+    data = await get_all_champion_stats(rank, cache, patch, position)
+    return [ChampionStatsSummary(**d) for d in data]
+
+
+@router.get(
     "/{champion_id}",
     response_model=ChampionDetail,
     summary="チャンピオン詳細取得",
@@ -48,6 +109,57 @@ async def get_champion(
     service: Annotated[ChampionService, Depends(get_champion_service)],
 ) -> ChampionDetail:
     return await service.get_champion_by_id(champion_id)
+
+
+@router.get(
+    "/{champion_id}/stats",
+    response_model=list[PositionStats],
+    summary="チャンピオン単体ポジション別統計",
+    description=(
+        "指定チャンピオンの全ポジション別勝率・ピック率・バン率を返します。"
+        "rank パラメータでランク帯を指定可能。"
+        "結果は1時間Redisにキャッシュされます。"
+    ),
+)
+async def get_champion_stats(
+    champion_id: Annotated[str, Path(pattern=_CHAMPION_ID_PATTERN, description="チャンピオン英語ID")],
+    rank: Annotated[str, Query(description="ランク帯")] = "PLATINUM_PLUS",
+    cache=Depends(get_cache),
+) -> list[PositionStats]:
+    data = await get_single_champion_stats(champion_id, rank, cache)
+    return [PositionStats(**d) for d in data]
+
+
+@router.get(
+    "/{champion_id}/history",
+    response_model=list[PatchWinRate],
+    summary="チャンピオンパッチ別勝率履歴",
+    description="指定チャンピオンのパッチ別勝率推移を返します（全ポジション合計）。",
+)
+async def get_champion_history(
+    champion_id: Annotated[str, Path(pattern=_CHAMPION_ID_PATTERN, description="チャンピオン英語ID")],
+    rank:        Annotated[str, Query(description="ランク帯")] = "CHALLENGER",
+    cache=Depends(get_cache),
+) -> list[PatchWinRate]:
+    data = await get_champion_patch_history(champion_id, rank, cache)
+    return [PatchWinRate(**d) for d in data]
+
+
+@router.get(
+    "/{champion_id}/items",
+    response_model=list[ItemSlotStats],
+    summary="チャンピオンアイテム購入統計",
+    description="指定チャンピオンのスロット別人気アイテムを返します。",
+)
+async def get_champion_item_stats_endpoint(
+    champion_id: Annotated[str, Path(pattern=_CHAMPION_ID_PATTERN, description="チャンピオン英語ID")],
+    rank:     Annotated[str, Query(description="ランク帯")]         = "CHALLENGER",
+    patch:    Annotated[str | None, Query(description="パッチ番号")] = None,
+    position: Annotated[str | None, Query(description="ポジション")] = None,
+    cache=Depends(get_cache),
+) -> list[ItemSlotStats]:
+    data = await get_champion_item_stats(champion_id, rank, cache, patch, position)
+    return [ItemSlotStats(**d) for d in data]
 
 
 @router.get(
