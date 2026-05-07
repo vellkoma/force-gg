@@ -13,8 +13,6 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Uplo
 
 from app.core.config import settings
 from app.deps import get_cache, get_champion_service
-
-logger = logging.getLogger(__name__)
 from app.models.build import BuildRecommendation
 from app.models.champion import (
     ChampionDetail,
@@ -34,6 +32,7 @@ from app.services.champion_stats import (
     get_champion_item_stats,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/champions", tags=["champion"])
 
 # チャンピオンIDのバリデーションパターン（英字始まり、英数字のみ、最大31文字）
