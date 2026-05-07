@@ -166,6 +166,25 @@ async def get_champion_item_stats_endpoint(
     return [ItemSlotStats(**d) for d in data]
 
 
+_ALLOWED_TABLES = {"champion_stats_meta", "champion_stats_aggregate", "champion_item_stats"}
+
+
+def _filter_sql_lines(sql_text: str) -> list[str]:
+    """許可テーブルへのDELETE/INSERTのみを抽出する"""
+    result = []
+    for line in sql_text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("--"):
+            continue
+        if line.upper().startswith(("PRAGMA", "BEGIN", "COMMIT", "ROLLBACK")):
+            continue
+        for tbl in _ALLOWED_TABLES:
+            if tbl in line:
+                result.append(line)
+                break
+    return result
+
+
 @router.post(
     "/admin/import-db",
     summary="チャンピオン統計DBインポート（一時管理用）",
@@ -181,35 +200,57 @@ async def import_champion_db(
     import aiosqlite
     content = await file.read()
     sql_text = content.decode("utf-8")
+    lines = _filter_sql_lines(sql_text)
 
-    allowed_tables = {"champion_stats_meta", "champion_stats_aggregate", "champion_item_stats"}
+    executed = 0
+    errors = 0
+    BATCH = 500
+
+    async with aiosqlite.connect(settings.esports_db_path) as db:
+        for i in range(0, len(lines), BATCH):
+            batch = lines[i:i + BATCH]
+            script = "BEGIN;\n" + "\n".join(batch) + "\nCOMMIT;"
+            try:
+                await db.executescript(script)
+                executed += len(batch)
+            except Exception as e:
+                errors += len(batch)
+                logger.warning("バッチ実行エラー i=%d: %s", i, e)
+
+    logger.info("DBインポート完了: %d件実行 / %dエラー", executed, errors)
+    return {"status": "ok", "executed": executed, "errors": errors}
+
+
+@router.post(
+    "/admin/import-db-chunk",
+    summary="チャンピオン統計DBチャンクインポート（一時管理用）",
+    include_in_schema=False,
+)
+async def import_champion_db_chunk(
+    x_update_secret: str = Header(...),
+    file: UploadFile = File(...),
+) -> dict:
+    """小さなSQLチャンクを受け取って逐次実行する"""
+    if not settings.update_secret or x_update_secret != settings.update_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    import aiosqlite
+    content = await file.read()
+    sql_text = content.decode("utf-8")
+    lines = _filter_sql_lines(sql_text)
+
     executed = 0
     errors = 0
 
     async with aiosqlite.connect(settings.esports_db_path) as db:
-        for line in sql_text.splitlines():
-            line = line.strip()
-            if not line or line.startswith("--"):
-                continue
-            # セキュリティ: 許可テーブルへの操作のみ
-            if line.startswith("PRAGMA") or line.startswith("BEGIN") or line.startswith("COMMIT"):
-                continue
-            is_allowed = False
-            for tbl in allowed_tables:
-                if f'"{tbl}"' in line or f"'{tbl}'" in line or f" {tbl};" in line or f" {tbl} " in line:
-                    is_allowed = True
-                    break
-            if not is_allowed:
-                continue
-            try:
-                await db.execute(line)
-                executed += 1
-            except Exception as e:
-                errors += 1
-                logger.warning("SQL実行エラー: %s | %s", e, line[:80])
-        await db.commit()
+        script = "BEGIN;\n" + "\n".join(lines) + "\nCOMMIT;"
+        try:
+            await db.executescript(script)
+            executed = len(lines)
+        except Exception as e:
+            errors = len(lines)
+            logger.error("チャンク実行エラー: %s", e)
 
-    logger.info("DBインポート完了: %d件実行 / %dエラー", executed, errors)
     return {"status": "ok", "executed": executed, "errors": errors}
 
 
