@@ -44,6 +44,10 @@ import httpx
 
 sys.path.insert(0, ".")
 
+# settings より先に .env を読み込む（pydantic-settings が環境変数を参照する前に設定する）
+from dotenv import load_dotenv
+load_dotenv()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
