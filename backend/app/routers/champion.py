@@ -228,6 +228,7 @@ async def import_champion_db(
 async def import_champion_db_chunk(
     x_update_secret: str = Header(...),
     file: UploadFile = File(...),
+    cache=Depends(get_cache),
 ) -> dict:
     """小さなSQLチャンクを受け取って逐次実行する"""
     if not settings.update_secret or x_update_secret != settings.update_secret:
@@ -251,6 +252,35 @@ async def import_champion_db_chunk(
             logger.error("チャンク実行エラー: %s", e)
 
     return {"status": "ok", "executed": executed, "errors": errors}
+
+
+@router.post(
+    "/admin/cache-clear",
+    summary="チャンピオン統計キャッシュクリア（一時管理用）",
+    include_in_schema=False,
+)
+async def clear_champion_cache(
+    x_update_secret: str = Header(...),
+    cache=Depends(get_cache),
+) -> dict:
+    if not settings.update_secret or x_update_secret != settings.update_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    prefixes = [
+        "champion_stats_all:",
+        "champion_stats_single:",
+        "champion_history:",
+        "champion_items:",
+        "champion_patches:",
+        "champion_rank_quality",
+    ]
+    cleared = 0
+    for prefix in prefixes:
+        try:
+            cleared += await cache.delete_pattern(f"{prefix}*")
+        except Exception:
+            pass
+    logger.info("キャッシュクリア完了: %d件", cleared)
+    return {"status": "ok", "cleared": cleared}
 
 
 @router.get(

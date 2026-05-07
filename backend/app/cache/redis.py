@@ -115,6 +115,20 @@ class CacheClient:
         except RedisError as e:
             logger.warning("キャッシュ削除エラー [%s]: %s", key, str(e))
 
+    async def delete_pattern(self, pattern: str) -> int:
+        """パターンにマッチする全キーを削除する（Redis専用、フォールバック時は0を返す）"""
+        try:
+            if self._use_redis and self._redis is not None:
+                keys = await self._redis.keys(pattern)
+                if keys:
+                    return await self._redis.delete(*keys)
+                return 0
+            # インメモリキャッシュではパターン削除をサポートしない
+            return 0
+        except RedisError as e:
+            logger.warning("キャッシュパターン削除エラー [%s]: %s", pattern, str(e))
+            return 0
+
     @property
     def backend(self) -> str:
         """現在使用中のキャッシュバックエンド名を返す"""
