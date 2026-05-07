@@ -6,11 +6,15 @@ GET /api/champions/{id}         - チャンピオン詳細
 GET /api/champions/{id}/stats   - チャンピオン単体ポジション別統計
 GET /api/champions/{id}/builds  - チャンピオンビルド推奨
 """
+import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, UploadFile, File
 
+from app.core.config import settings
 from app.deps import get_cache, get_champion_service
+
+logger = logging.getLogger(__name__)
 from app.models.build import BuildRecommendation
 from app.models.champion import (
     ChampionDetail,
@@ -160,6 +164,53 @@ async def get_champion_item_stats_endpoint(
 ) -> list[ItemSlotStats]:
     data = await get_champion_item_stats(champion_id, rank, cache, patch, position)
     return [ItemSlotStats(**d) for d in data]
+
+
+@router.post(
+    "/admin/import-db",
+    summary="チャンピオン統計DBインポート（一時管理用）",
+    include_in_schema=False,
+)
+async def import_champion_db(
+    x_update_secret: str = Header(...),
+    file: UploadFile = File(...),
+) -> dict:
+    if not settings.update_secret or x_update_secret != settings.update_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    import aiosqlite
+    content = await file.read()
+    sql_text = content.decode("utf-8")
+
+    allowed_tables = {"champion_stats_meta", "champion_stats_aggregate", "champion_item_stats"}
+    executed = 0
+    errors = 0
+
+    async with aiosqlite.connect(settings.esports_db_path) as db:
+        for line in sql_text.splitlines():
+            line = line.strip()
+            if not line or line.startswith("--"):
+                continue
+            # セキュリティ: 許可テーブルへの操作のみ
+            if line.startswith("PRAGMA") or line.startswith("BEGIN") or line.startswith("COMMIT"):
+                continue
+            is_allowed = False
+            for tbl in allowed_tables:
+                if f'"{tbl}"' in line or f"'{tbl}'" in line or f" {tbl};" in line or f" {tbl} " in line:
+                    is_allowed = True
+                    break
+            if not is_allowed:
+                continue
+            try:
+                await db.execute(line)
+                executed += 1
+            except Exception as e:
+                errors += 1
+                logger.warning("SQL実行エラー: %s | %s", e, line[:80])
+        await db.commit()
+
+    logger.info("DBインポート完了: %d件実行 / %dエラー", executed, errors)
+    return {"status": "ok", "executed": executed, "errors": errors}
 
 
 @router.get(
