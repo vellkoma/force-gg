@@ -211,7 +211,6 @@ async def main(skip_schedule: bool = False, skip_champion_stats: bool = False, r
         logger.info("--- チャンピオン統計集計 スキップ ---")
 
     logger.info("=== 完了: スケジュール合計 %d 件 ===", total)
-    await db.close_db()
 
 
 if __name__ == "__main__":
@@ -252,4 +251,8 @@ if __name__ == "__main__":
     skip_schedule = args.skip_schedule or args.champion_stats_only
     skip_champion_stats = args.skip_champion_stats
 
-    asyncio.run(main(skip_schedule=skip_schedule, skip_champion_stats=skip_champion_stats, rank_group=args.rank, patch=args.patch, rank_all=args.rank_all))
+    async def _run_and_close() -> None:
+        await main(skip_schedule=skip_schedule, skip_champion_stats=skip_champion_stats, rank_group=args.rank, patch=args.patch, rank_all=args.rank_all)
+        await db.close_db()
+
+    asyncio.run(_run_and_close())

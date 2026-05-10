@@ -22,6 +22,8 @@ def _pool_or_raise() -> asyncpg.Pool:
 
 async def init_db() -> None:
     global _pool
+    if _pool is not None:
+        return
     _pool = await asyncpg.create_pool(settings.database_url, min_size=2, max_size=10)
 
     async with _pool.acquire() as conn:
