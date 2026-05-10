@@ -182,12 +182,15 @@ async def main(skip_schedule: bool = False, skip_champion_stats: bool = False, r
         logger.info("--- リーグアイコン更新 ---")
         await update_league_icons()
 
-        # スケジュール（Leaguepediaフォールバック後は長めに待機）
+        # スケジュール（LEAGUE_CONFIG の順番通り：PandaScoreリーグ → Leaguepediaリーグ）
         logger.info("--- スケジュール更新 ---")
         for league_id, cfg in LEAGUE_CONFIG.items():
             count, source = await update_league_schedule(league_id, cfg)
             total += count
-            wait = 30 if source == "leaguepedia" else 2
+            # Leaguepedia使用後は300秒待機してレートリミット回復を待つ
+            wait = 300 if source == "leaguepedia" else 2
+            if wait > 2:
+                logger.info("  Leaguepedia レートリミット回避: %d秒待機", wait)
             await asyncio.sleep(wait)
 
         # チームロゴ補完（全リーグまとめて取得でレートリミット回避）
