@@ -200,22 +200,45 @@ async def collect_and_store_stats(client: RiotClient, rank_group: str = "CHALLEN
 
     # 過去パッチ指定時は遡り件数を増やす
     current_patch = await _get_current_patch()
+    is_historical = patch != current_patch
     matches_per_summoner = (
-        _MATCHES_PER_SUMMONER_HISTORICAL if patch != current_patch
+        _MATCHES_PER_SUMMONER_HISTORICAL if is_historical
         else _MATCHES_PER_SUMMONER
     )
     logger.info(
         "  1人あたり取得件数: %d件（%s）",
         matches_per_summoner,
-        "過去パッチ" if patch != current_patch else "最新パッチ",
+        "過去パッチ" if is_historical else "最新パッチ",
     )
+
+    # パッチ期間キャッシュを確認（startTime/endTime フィルタに使用）
+    patch_parts = patch.split(".")
+    major_minor = f"{patch_parts[0]}.{patch_parts[1]}"
+    date_range = await db.get_patch_date_range(major_minor)
+    start_time: int | None = None
+    end_time: int | None = None
+    if date_range and is_historical:
+        start_time = date_range["start_time"]
+        end_time   = date_range["end_time"]
+        from datetime import datetime as _dt
+        logger.info(
+            "  パッチ期間キャッシュ使用: %s 〜 %s",
+            _dt.fromtimestamp(start_time).strftime("%Y-%m-%d"),
+            _dt.fromtimestamp(end_time).strftime("%Y-%m-%d"),
+        )
 
     # マッチID 収集（重複除去）
     match_id_sets: list[list[str]] = []
     for puuid in puuids:
         ids = await _safe(
             sem,
-            client.get_match_ids(puuid, count=matches_per_summoner, queue=420),
+            client.get_match_ids(
+                puuid,
+                count=matches_per_summoner,
+                queue=420,
+                start_time=start_time,
+                end_time=end_time,
+            ),
             default=[],
         )
         match_id_sets.append(ids or [])
@@ -258,6 +281,22 @@ async def collect_and_store_stats(client: RiotClient, rank_group: str = "CHALLEN
     if not matches:
         logger.warning("  パッチ %s のマッチが見つかりませんでした（別パッチのデータのみ）", patch)
         return
+
+    # パッチ期間をDBに記録（gameCreation は ms → s に変換）
+    timestamps = [
+        m["info"]["gameCreation"] // 1000
+        for m in matches
+        if m.get("info", {}).get("gameCreation", 0) > 0
+    ]
+    if timestamps:
+        await db.upsert_patch_date_range(major_minor, min(timestamps), max(timestamps))
+        from datetime import datetime as _dt
+        logger.info(
+            "  パッチ期間記録: %s [%s 〜 %s]",
+            major_minor,
+            _dt.fromtimestamp(min(timestamps)).strftime("%Y-%m-%d"),
+            _dt.fromtimestamp(max(timestamps)).strftime("%Y-%m-%d"),
+        )
 
     # gameVersion（major.minor.hotfix）ごとにグループ化して個別に保存
     by_version: dict[str, list[dict]] = defaultdict(list)

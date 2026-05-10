@@ -215,18 +215,29 @@ class RiotClient:
     # ------------------------------------------------------------------
 
     async def get_match_ids(
-        self, puuid: str, count: int = 20, queue: int | None = None
+        self,
+        puuid: str,
+        count: int = 20,
+        queue: int | None = None,
+        start_time: int | None = None,
+        end_time: int | None = None,
     ) -> list:
         """
         PUUIDからマッチID一覧を取得する
         エンドポイント: GET {ASIA}/lol/match/v5/matches/by-puuid/{puuid}/ids
         queue=None: 全ゲームモード
         queue=420: ランク戦ソロ, 440: フレックス, 450: ARAM, 900: URF
+        start_time/end_time: Unixタイム（秒）で期間絞り込み
         """
-        params = f"count={count}"
+        params: dict[str, str | int] = {"count": count}
         if queue is not None:
-            params += f"&queue={queue}"
-        url = f"{self._asia}/lol/match/v5/matches/by-puuid/{puuid}/ids?{params}"
+            params["queue"] = queue
+        if start_time is not None:
+            params["startTime"] = start_time
+        if end_time is not None:
+            params["endTime"] = end_time
+        qs = "&".join(f"{k}={v}" for k, v in params.items())
+        url = f"{self._asia}/lol/match/v5/matches/by-puuid/{puuid}/ids?{qs}"
         result = await self._get(url)
         return result  # type: ignore[return-value]
 

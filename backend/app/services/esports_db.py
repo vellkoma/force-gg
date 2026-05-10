@@ -192,6 +192,15 @@ async def init_db() -> None:
             )
         """)
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS patch_date_ranges (
+                patch      TEXT PRIMARY KEY,
+                start_time INTEGER NOT NULL,
+                end_time   INTEGER NOT NULL,
+                updated_at TEXT    NOT NULL
+            )
+        """)
+
         await db.commit()
     logger.info("Esports DB 初期化完了: %s", _DB_PATH)
 
@@ -557,3 +566,41 @@ async def get_champion_stats_single(champion_name: str, rank_group: str = "CHALL
             (champion_name, patch, rank_group),
         ) as cur:
             return [dict(row) async for row in cur]
+
+
+async def get_patch_date_range(patch: str) -> dict[str, int] | None:
+    """パッチの収集済み期間（start_time / end_time）を返す。未登録なら None。"""
+    # major.minor のみで検索（"16.9.1" → "16.9"）
+    parts = patch.split(".")
+    major_minor = f"{parts[0]}.{parts[1]}"
+    async with aiosqlite.connect(_DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT start_time, end_time FROM patch_date_ranges WHERE patch = ?",
+            (major_minor,),
+        ) as cur:
+            row = await cur.fetchone()
+    return dict(row) if row else None
+
+
+async def upsert_patch_date_range(patch: str, start_time: int, end_time: int) -> None:
+    """パッチ期間を upsert する。既存より広い範囲なら拡張する。"""
+    parts = patch.split(".")
+    major_minor = f"{parts[0]}.{parts[1]}"
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(_DB_PATH) as db:
+        async with db.execute(
+            "SELECT start_time, end_time FROM patch_date_ranges WHERE patch = ?",
+            (major_minor,),
+        ) as cur:
+            existing = await cur.fetchone()
+        if existing:
+            new_start = min(existing[0], start_time)
+            new_end   = max(existing[1], end_time)
+        else:
+            new_start, new_end = start_time, end_time
+        await db.execute(
+            "INSERT OR REPLACE INTO patch_date_ranges (patch, start_time, end_time, updated_at) VALUES (?,?,?,?)",
+            (major_minor, new_start, new_end, now),
+        )
+        await db.commit()
