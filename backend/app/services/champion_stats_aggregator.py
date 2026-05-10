@@ -270,16 +270,17 @@ async def collect_and_store_stats(client: RiotClient, rank_group: str = "CHALLEN
         logger.warning("  マッチ詳細が取得できませんでした")
         return
 
-    # パッチでフィルタリング（gameVersion は "16.9.1.12345" 形式）
+    # パッチでフィルタリング（gameVersion は "16.9.386.6510" 形式 — 3桁目はビルド番号）
+    # major.minor（"16.9"）でプレフィックス一致させる
     before = len(matches)
     matches = [
         m for m in matches
-        if m.get("info", {}).get("gameVersion", "").startswith(patch + ".")
+        if m.get("info", {}).get("gameVersion", "").startswith(major_minor + ".")
     ]
-    logger.info("  パッチ %s のマッチ: %d件（除外: %d件）", patch, len(matches), before - len(matches))
+    logger.info("  パッチ %s のマッチ: %d件（除外: %d件）", major_minor, len(matches), before - len(matches))
 
     if not matches:
-        logger.warning("  パッチ %s のマッチが見つかりませんでした（別パッチのデータのみ）", patch)
+        logger.warning("  パッチ %s のマッチが見つかりませんでした（別パッチのデータのみ）", major_minor)
         return
 
     # パッチ期間をDBに記録（gameCreation は ms → s に変換）
@@ -298,15 +299,11 @@ async def collect_and_store_stats(client: RiotClient, rank_group: str = "CHALLEN
             _dt.fromtimestamp(max(timestamps)).strftime("%Y-%m-%d"),
         )
 
-    # gameVersion（major.minor.hotfix）ごとにグループ化して個別に保存
-    by_version: dict[str, list[dict]] = defaultdict(list)
-    for m in matches:
-        game_ver = m.get("info", {}).get("gameVersion", "")
-        ver_parts = game_ver.split(".")
-        ver_key = ".".join(ver_parts[:3]) if len(ver_parts) >= 3 else ".".join(ver_parts[:2])
-        by_version[ver_key].append(m)
+    # major.minor（"16.9"）でグループ化して保存
+    # gameVersion は "16.9.386.6510" 形式でビルド番号が入るため major.minor で統一する
+    by_version: dict[str, list[dict]] = {major_minor: matches}
 
-    logger.info("  ホットフィックス別内訳: %s", {v: len(ms) for v, ms in by_version.items()})
+    logger.info("  パッチキー: %s（%d マッチ）", major_minor, len(matches))
 
     now = datetime.now(timezone.utc).isoformat()
     for ver, ver_matches in sorted(by_version.items()):
