@@ -157,11 +157,11 @@ export interface PositionStats {
 }
 
 export const TIER_COLORS: Record<string, string> = {
-  'S+': '#e8a838',
-  'S':  '#c69b3a',
-  'A':  '#4ade80',
-  'B':  '#60a5fa',
-  'C':  '#94a3b8',
+  'T1': '#e8a838',
+  'T2': '#c69b3a',
+  'T3': '#4ade80',
+  'T4': '#60a5fa',
+  'T5': '#94a3b8',
 }
 
 export const POSITION_LABELS: Record<string, string> = {

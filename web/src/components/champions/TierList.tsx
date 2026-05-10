@@ -11,7 +11,15 @@ interface Props {
   sortBy?:   TierSortBy
 }
 
-const TIERS = ['S+', 'S', 'A', 'B', 'C'] as const
+const TIERS = ['T1', 'T2', 'T3', 'T4', 'T5'] as const
+
+const TIER_LABEL: Record<string, string> = {
+  'T1': 'Tier Ⅰ',
+  'T2': 'Tier Ⅱ',
+  'T3': 'Tier Ⅲ',
+  'T4': 'Tier Ⅳ',
+  'T5': 'Tier Ⅴ',
+}
 
 // ソートモードごとのティア判定メトリクス
 const SORT_METRIC: Record<TierSortBy, keyof ChampionStatsSummary> = {
@@ -20,13 +28,13 @@ const SORT_METRIC: Record<TierSortBy, keyof ChampionStatsSummary> = {
   ban_rate:  'ban_rate',
 }
 
-// パーセンタイルベースでティア割り当て（S+:上位5% / S:上位20% / A:上位45% / B:上位75% / C:残り）
+// パーセンタイルベースでティア割り当て（T1:上位5% / T2:上位20% / T3:上位45% / T4:上位75% / T5:残り）
 const TIER_THRESHOLDS: [string, number][] = [
-  ['S+', 0.95],
-  ['S',  0.80],
-  ['A',  0.55],
-  ['B',  0.25],
-  ['C',  0.0],
+  ['T1', 0.95],
+  ['T2', 0.80],
+  ['T3', 0.55],
+  ['T4', 0.25],
+  ['T5', 0.0],
 ]
 
 function computeTieredGroups(
@@ -56,11 +64,11 @@ function computeTieredGroups(
 }
 
 const TIER_BG: Record<string, string> = {
-  'S+': 'bg-yellow-900/20 border-yellow-600/30',
-  'S':  'bg-yellow-900/10 border-yellow-700/20',
-  'A':  'bg-green-900/10 border-green-700/20',
-  'B':  'bg-blue-900/10 border-blue-700/20',
-  'C':  'bg-slate-800/20 border-slate-600/20',
+  'T1': 'bg-yellow-900/20 border-yellow-600/30',
+  'T2': 'bg-yellow-900/10 border-yellow-700/20',
+  'T3': 'bg-green-900/10 border-green-700/20',
+  'T4': 'bg-blue-900/10 border-blue-700/20',
+  'T5': 'bg-slate-800/20 border-slate-600/20',
 }
 
 export const TierList: FC<Props> = ({
@@ -94,10 +102,10 @@ export const TierList: FC<Props> = ({
             <div className="flex gap-3 items-start">
               {/* ティアラベル */}
               <div
-                className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-sm"
+                className="shrink-0 w-16 h-10 rounded-lg flex items-center justify-center font-display font-bold text-xs"
                 style={{ color: TIER_COLORS[tier], backgroundColor: `${TIER_COLORS[tier]}22` }}
               >
-                {tier}
+                {TIER_LABEL[tier]}
               </div>
 
               {/* チャンピオンアイコン群 */}

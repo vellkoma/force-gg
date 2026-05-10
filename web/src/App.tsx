@@ -1,5 +1,5 @@
-import { createBrowserRouter, RouterProvider, Outlet, NavLink } from 'react-router-dom'
-import { Suspense, lazy } from 'react'
+import { createBrowserRouter, RouterProvider, Outlet, NavLink, useLocation } from 'react-router-dom'
+import { Suspense, lazy, useEffect } from 'react'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import UserMenu from '@/components/auth/UserMenu'
@@ -19,6 +19,12 @@ const PremiumSuccessPage   = lazy(() => import('@/pages/PremiumSuccessPage'))
 const PremiumCancelPage    = lazy(() => import('@/pages/PremiumCancelPage'))
 const CoachingPage         = lazy(() => import('@/pages/CoachingPage'))
 const DownloadPage         = lazy(() => import('@/pages/DownloadPage'))
+
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
 
 // ルートレイアウト（ヘッダー付き）
 function RootLayout() {
@@ -76,6 +82,7 @@ function RootLayout() {
         }
       >
         {/* BottomStickyAd（高さ約106px）に隠れないよう全ページに下余白 */}
+        <ScrollToTop />
         <div className="pb-32">
           <Outlet />
         </div>
