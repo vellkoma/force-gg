@@ -36,7 +36,6 @@
 import argparse
 import asyncio
 import logging
-import os
 import sys
 
 import httpx
@@ -156,7 +155,7 @@ async def update_team_logos() -> None:
 
     logger.info("  ロゴ未取得チーム: %d件", len(team_names))
     # Leaguepedia レートリミット回避（スケジュール取得で消費した後の回復待ち）
-    await asyncio.sleep(60)
+    await asyncio.sleep(300)
     logos = await fetch_team_logos(team_names)
     if not logos:
         logger.warning("  チームロゴ取得失敗（次回更新時に再試行）")

@@ -61,7 +61,7 @@ async def fetch_team_logos(team_names: list[str]) -> dict[str, str]:
             "fields": "Name,Image",
             "where":  f"Name IN ({names_clause})",
             "limit":  str(len(team_names) + 10),
-        })
+        }, _retry=5)
     except Exception as e:
         logger.warning("fetch_team_logos failed: %s", e)
         return {}
@@ -109,7 +109,7 @@ async def _cargo_query(params: dict, _retry: int = 3) -> list[dict]:
         if "error" in data:
             code = data["error"].get("code", "")
             if code == "ratelimited" and attempt < _retry - 1:
-                wait = 30 * (attempt + 1)  # 30s, 60s, 90s
+                wait = 60 * (attempt + 1)  # 60s, 120s, 180s, 240s, 300s
                 logger.warning("Leaguepedia レートリミット: %ds 待機 (attempt %d)", wait, attempt + 1)
                 await asyncio.sleep(wait)
                 continue
