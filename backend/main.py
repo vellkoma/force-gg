@@ -52,6 +52,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("バックエンドサーバーをシャットダウンしています...")
     status_task.cancel()
     await cache.disconnect()
+    await esports_db.close_db()
 
 
 import os

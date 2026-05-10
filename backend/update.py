@@ -39,7 +39,6 @@ import logging
 import os
 import sys
 
-import aiosqlite
 import httpx
 
 sys.path.insert(0, ".")
@@ -150,18 +149,7 @@ async def update_league_schedule(league_id: int, cfg: dict) -> int:
 
 async def update_team_logos() -> None:
     """DBのチームアイコンが空のレコードをLeaguepediaから一括補完する"""
-    async with aiosqlite.connect(db._DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
-        async with conn.execute(
-            "SELECT DISTINCT team1_name FROM esports_matches WHERE team1_image_url = '' OR team1_image_url IS NULL"
-        ) as cur:
-            names1 = [row[0] async for row in cur]
-        async with conn.execute(
-            "SELECT DISTINCT team2_name FROM esports_matches WHERE team2_image_url = '' OR team2_image_url IS NULL"
-        ) as cur:
-            names2 = [row[0] async for row in cur]
-
-    team_names = list(set(names1 + names2))
+    team_names = await db.get_teams_missing_logos()
     if not team_names:
         logger.info("  チームロゴ補完不要")
         return
@@ -174,17 +162,7 @@ async def update_team_logos() -> None:
         logger.warning("  チームロゴ取得失敗（次回更新時に再試行）")
         return
 
-    async with aiosqlite.connect(db._DB_PATH) as conn:
-        for name, url in logos.items():
-            await conn.execute(
-                "UPDATE esports_matches SET team1_image_url = ? WHERE team1_name = ? AND (team1_image_url = '' OR team1_image_url IS NULL)",
-                (url, name),
-            )
-            await conn.execute(
-                "UPDATE esports_matches SET team2_image_url = ? WHERE team2_name = ? AND (team2_image_url = '' OR team2_image_url IS NULL)",
-                (url, name),
-            )
-        await conn.commit()
+    await db.bulk_update_team_logos(logos)
     logger.info("  チームロゴ補完: %d チーム", len(logos))
 
 
@@ -233,6 +211,7 @@ async def main(skip_schedule: bool = False, skip_champion_stats: bool = False, r
         logger.info("--- チャンピオン統計集計 スキップ ---")
 
     logger.info("=== 完了: スケジュール合計 %d 件 ===", total)
+    await db.close_db()
 
 
 if __name__ == "__main__":

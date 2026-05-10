@@ -83,8 +83,8 @@ class Settings(BaseSettings):
     # 日次更新トリガー用シークレット（GitHub Actions → /api/esports/admin/update）
     update_secret: str = ""
 
-    # SQLite DB パス（LoL esports・チャンピオン統計用）
-    esports_db_path: str = "LOL.db"
+    # PostgreSQL接続URL
+    database_url: str = ""  # postgresql://user:pass@host/dbname
 
     # フロントエンドURL（Stripeリダイレクト用）
     frontend_url: str = "http://localhost:5173"
