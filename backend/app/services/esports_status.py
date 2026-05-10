@@ -7,9 +7,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
-import aiosqlite
-
-from app.core.config import settings
+from app.services import esports_db as db
 
 logger  = logging.getLogger(__name__)
 _CHECK_INTERVAL = 60  # 秒（1分ごとにステータスを再評価）
@@ -20,41 +18,40 @@ async def _refresh_statuses() -> int:
     now     = datetime.now(timezone.utc)
     updated = 0
 
-    async with aiosqlite.connect(settings.esports_db_path) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT id, begin_at, status FROM esports_matches "
-            "WHERE status IN ('not_started', 'running')"
-        ) as cur:
-            rows = [dict(r) async for r in cur]
+    pool = db._pool_or_raise()
+    rows = await pool.fetch(
+        "SELECT id, begin_at, status FROM esports_matches "
+        "WHERE status IN ('not_started', 'running')"
+    )
 
-        for row in rows:
-            try:
-                begin = datetime.fromisoformat(row["begin_at"])
-                if begin.tzinfo is None:
-                    begin = begin.replace(tzinfo=timezone.utc)
-            except ValueError:
-                continue
+    updates: list[tuple[str, int]] = []
+    for row in rows:
+        try:
+            begin = datetime.fromisoformat(row["begin_at"])
+            if begin.tzinfo is None:
+                begin = begin.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
 
-            old = row["status"]
-            if begin > now + timedelta(minutes=10):
-                new = "not_started"
-            elif now - begin < timedelta(hours=4):
-                new = "running"
-            else:
-                # 4時間経過しても finished に変わっていない = データ未更新
-                # ステータスはそのまま（update.py が正しい結果で上書きする）
-                continue
+        old = row["status"]
+        if begin > now + timedelta(minutes=10):
+            new = "not_started"
+        elif now - begin < timedelta(hours=4):
+            new = "running"
+        else:
+            continue
 
-            if new != old:
-                await db.execute(
-                    "UPDATE esports_matches SET status = ? WHERE id = ?",
-                    (new, row["id"]),
+        if new != old:
+            updates.append((new, row["id"]))
+
+    if updates:
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.executemany(
+                    "UPDATE esports_matches SET status = $1 WHERE id = $2",
+                    updates,
                 )
-                updated += 1
-
-        if updated:
-            await db.commit()
+        updated = len(updates)
 
     return updated
 
