@@ -65,8 +65,8 @@ function createMainWindow(): BrowserWindow {
     minWidth: 900,
     minHeight: 600,
     show: false,
-    autoHideMenuBar: false,
-    backgroundColor: '#0a0e1a', // LoLダークテーマ
+    frame: false,          // カスタムタイトルバーを使用
+    backgroundColor: '#060a12',
     webPreferences: {
       contextIsolation: true,   // セキュリティ必須
       nodeIntegration: false,   // セキュリティ必須

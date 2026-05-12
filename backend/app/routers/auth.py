@@ -65,12 +65,14 @@ async def login_email(body: UserLogin) -> TokenResponse:
 @router.get("/oauth/google/url")
 async def google_auth_url(
     state: Optional[str] = Query(default=None, description="CSRFトークン（省略時は自動生成）"),
+    redirect_uri: Optional[str] = Query(default=None, description="コールバックURL（デスクトップアプリ用ループバックURLを指定可能）"),
 ) -> dict:
     """
     Google OAuth 認証URLを返す。
     フロントエンドはこのURLにリダイレクトする。
+    デスクトップアプリは redirect_uri にループバックURL（http://127.0.0.1:{port}）を指定できる。
     """
-    url = auth_service.get_google_auth_url(state=state)
+    url = auth_service.get_google_auth_url(state=state, redirect_uri=redirect_uri)
     return {"url": url}
 
 
@@ -81,12 +83,14 @@ async def google_auth_url(
 @router.get("/oauth/discord/url")
 async def discord_auth_url(
     state: Optional[str] = Query(default=None, description="CSRFトークン（省略時は自動生成）"),
+    redirect_uri: Optional[str] = Query(default=None, description="コールバックURL（デスクトップアプリ用ループバックURLを指定可能）"),
 ) -> dict:
     """
     Discord OAuth 認証URLを返す。
     フロントエンドはこのURLにリダイレクトする。
+    デスクトップアプリは redirect_uri にループバックURL（http://127.0.0.1:{port}）を指定できる。
     """
-    url = auth_service.get_discord_auth_url(state=state)
+    url = auth_service.get_discord_auth_url(state=state, redirect_uri=redirect_uri)
     return {"url": url}
 
 

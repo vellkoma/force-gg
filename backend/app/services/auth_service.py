@@ -4,10 +4,10 @@
 - JWT アクセストークン / リフレッシュトークン 生成・検証
 - Google / Discord OAuth 2.0 フロー
 
-【インメモリDB設計】
-  users: dict[str, UserRecord]  — email をキーに保存
-  PostgreSQL 移行時はこのサービス層のデータアクセス部分だけ差し替える。
-  ビジネスロジック（JWT生成など）はそのまま再利用可能。
+【DB戦略】
+  DATABASE_URL が設定されている場合は asyncpg (PostgreSQL) を使用する。
+  未設定の場合はインメモリ dict にフォールバックする（開発・テスト用）。
+  ビジネスロジック（JWT生成など）はどちらのモードでも共通。
 """
 import hashlib
 import secrets
@@ -21,6 +21,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
+from app.core import database
 from app.models.user import UserRecord, UserResponse, TokenResponse
 
 # -------------------------------------------------------------------
@@ -29,15 +30,14 @@ from app.models.user import UserRecord, UserResponse, TokenResponse
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # -------------------------------------------------------------------
-# インメモリ "DB"
-# key: email（小文字正規化）, value: UserRecord
-# PostgreSQL 移行時はこの dict をリポジトリクラスに置き換える
+# インメモリ "DB"（DATABASE_URL 未設定時のフォールバック）
 # -------------------------------------------------------------------
-_users_by_email: dict[str, UserRecord] = {}
-_users_by_id: dict[str, UserRecord] = {}
+_mem_by_email: dict[str, UserRecord] = {}
+_mem_by_id: dict[str, UserRecord] = {}
 
-# OAuth state 検証用（CSRF対策）。本番ではRedisに保存する。
-_oauth_states: set[str] = set()
+# OAuth state 検証用（CSRF対策）。state -> redirect_uri のマッピング。
+# 本番ではRedisに保存するべきだが、短命な値なのでインメモリで問題ない。
+_oauth_states: dict[str, str] = {}
 
 
 # ===================================================================
@@ -53,7 +53,6 @@ def _verify_password(plain: str, hashed: str) -> bool:
 
 
 def _generate_user_id() -> str:
-    """ユニークなユーザーID生成（UUID代替）"""
     return secrets.token_hex(16)
 
 
@@ -61,22 +60,101 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _row_to_user(row: dict) -> UserRecord:
+    """asyncpg.Record / dict → UserRecord に変換する"""
+    return UserRecord(
+        id=row["id"],
+        email=row["email"],
+        name=row["name"],
+        avatar=row["avatar"],
+        provider=row["provider"],
+        hashed_password=row["hashed_password"],
+        is_premium=row["is_premium"],
+        premium_expires_at=row["premium_expires_at"],
+        stripe_customer_id=row["stripe_customer_id"],
+        stripe_subscription_id=row["stripe_subscription_id"],
+        created_at=row["created_at"],
+    )
+
+
 # ===================================================================
-# ユーザー管理（データアクセス層）
-# PostgreSQL 移行時はこのブロックをリポジトリクラスに切り出す
+# データアクセス層（DB / インメモリを切り替える）
 # ===================================================================
 
-def _find_by_email(email: str) -> Optional[UserRecord]:
-    return _users_by_email.get(email.lower())
+async def _find_by_email(email: str) -> Optional[UserRecord]:
+    pool = database.get_pool()
+    if pool:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM users WHERE email = $1", email.lower()
+            )
+            return _row_to_user(row) if row else None
+    return _mem_by_email.get(email.lower())
 
 
-def _find_by_id(user_id: str) -> Optional[UserRecord]:
-    return _users_by_id.get(user_id)
+async def _find_by_id(user_id: str) -> Optional[UserRecord]:
+    pool = database.get_pool()
+    if pool:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM users WHERE id = $1", user_id
+            )
+            return _row_to_user(row) if row else None
+    return _mem_by_id.get(user_id)
 
 
-def _save_user(user: UserRecord) -> None:
-    _users_by_email[user.email.lower()] = user
-    _users_by_id[user.id] = user
+async def _find_by_stripe_customer(customer_id: str) -> Optional[UserRecord]:
+    pool = database.get_pool()
+    if pool:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM users WHERE stripe_customer_id = $1", customer_id
+            )
+            return _row_to_user(row) if row else None
+    for user in _mem_by_id.values():
+        if user.stripe_customer_id == customer_id:
+            return user
+    return None
+
+
+async def _save_user(user: UserRecord) -> None:
+    """ユーザーをUPSERTする（新規作成 / 更新どちらも）"""
+    pool = database.get_pool()
+    if pool:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO users (
+                    id, email, name, avatar, provider, hashed_password,
+                    is_premium, premium_expires_at,
+                    stripe_customer_id, stripe_subscription_id, created_at
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                ON CONFLICT (id) DO UPDATE SET
+                    email                  = EXCLUDED.email,
+                    name                   = EXCLUDED.name,
+                    avatar                 = EXCLUDED.avatar,
+                    provider               = EXCLUDED.provider,
+                    hashed_password        = EXCLUDED.hashed_password,
+                    is_premium             = EXCLUDED.is_premium,
+                    premium_expires_at     = EXCLUDED.premium_expires_at,
+                    stripe_customer_id     = EXCLUDED.stripe_customer_id,
+                    stripe_subscription_id = EXCLUDED.stripe_subscription_id
+                """,
+                user.id,
+                user.email.lower(),
+                user.name,
+                user.avatar,
+                user.provider,
+                user.hashed_password,
+                user.is_premium,
+                user.premium_expires_at,
+                user.stripe_customer_id,
+                user.stripe_subscription_id,
+                user.created_at,
+            )
+        return
+    _mem_by_email[user.email.lower()] = user
+    _mem_by_id[user.id] = user
 
 
 # ===================================================================
@@ -88,7 +166,7 @@ async def create_user(email: str, password: str, name: str) -> UserRecord:
     メール登録。重複メールは 409 を返す。
     パスワードは bcrypt でハッシュ化してから保存する。
     """
-    if _find_by_email(email):
+    if await _find_by_email(email):
         raise HTTPException(409, "このメールアドレスはすでに登録されています")
 
     user = UserRecord(
@@ -99,7 +177,7 @@ async def create_user(email: str, password: str, name: str) -> UserRecord:
         hashed_password=_hash_password(password),
         created_at=_now_utc(),
     )
-    _save_user(user)
+    await _save_user(user)
     return user
 
 
@@ -108,11 +186,9 @@ async def authenticate_user(email: str, password: str) -> UserRecord:
     メール+パスワードで認証。失敗時は 401 を返す。
     タイミング攻撃対策として、ユーザーが存在しない場合でもハッシュ検証を実行する。
     """
-    user = _find_by_email(email)
+    user = await _find_by_email(email)
 
     if user is None or user.hashed_password is None:
-        # タイミング攻撃対策: ユーザーが存在しなくても同じ時間をかける
-        # 正規のbcryptハッシュ（"dummy"のハッシュ値）でダミー検証を実行する
         _verify_password(
             "dummy",
             "$2b$12$UXH4wu64oeWyewhcukpss.CXk/BEXemOLvVlWQflgd0kBQ8a4x03S",
@@ -130,13 +206,6 @@ async def authenticate_user(email: str, password: str) -> UserRecord:
 # ===================================================================
 
 def create_jwt_token(user_id: str, email: str) -> str:
-    """
-    アクセストークンを生成する（有効期限15分）。
-    ペイロード:
-      sub  : user_id
-      email: メールアドレス
-      type : 'access'
-    """
     expire = _now_utc() + timedelta(minutes=settings.jwt_access_token_expire_minutes)
     payload = {
         "sub": user_id,
@@ -148,12 +217,6 @@ def create_jwt_token(user_id: str, email: str) -> str:
 
 
 def create_refresh_token(user_id: str) -> str:
-    """
-    リフレッシュトークンを生成する（有効期限90日）。
-    ペイロード:
-      sub  : user_id
-      type : 'refresh'
-    """
     expire = _now_utc() + timedelta(days=settings.jwt_refresh_token_expire_days)
     payload = {
         "sub": user_id,
@@ -164,10 +227,6 @@ def create_refresh_token(user_id: str) -> str:
 
 
 def verify_token(token: str, expected_type: str = "access") -> dict:
-    """
-    JWTトークンを検証してペイロードを返す。
-    無効・期限切れの場合は 401 を raise する。
-    """
     try:
         payload = jwt.decode(
             token,
@@ -184,7 +243,6 @@ def verify_token(token: str, expected_type: str = "access") -> dict:
 
 
 def _build_token_response(user: UserRecord) -> TokenResponse:
-    """UserRecord から TokenResponse を組み立てるヘルパー"""
     return TokenResponse(
         token=create_jwt_token(user.id, user.email),
         refresh_token=create_refresh_token(user.id),
@@ -193,97 +251,76 @@ def _build_token_response(user: UserRecord) -> TokenResponse:
 
 
 async def refresh_access_token(refresh_token: str) -> TokenResponse:
-    """
-    リフレッシュトークンを使って新しいアクセストークンを発行する。
-    """
     payload = verify_token(refresh_token, expected_type="refresh")
     user_id = payload.get("sub")
-    user = _find_by_id(user_id)
+    user = await _find_by_id(user_id)
     if user is None:
         raise HTTPException(401, "ユーザーが見つかりません")
     return _build_token_response(user)
 
 
 async def get_user_from_token(token: str) -> UserResponse:
-    """
-    アクセストークンを検証してユーザー情報を返す。
-    deps.py から呼び出す用。
-    """
     payload = verify_token(token, expected_type="access")
     user_id = payload.get("sub")
-    user = _find_by_id(user_id)
+    user = await _find_by_id(user_id)
     if user is None:
         raise HTTPException(401, "ユーザーが見つかりません")
     return user.to_response()
 
 
 async def get_user_record_by_id(user_id: str) -> UserRecord:
-    """
-    ユーザーIDで UserRecord（内部用フルレコード）を取得する。
-    Stripe 課金処理など内部サービスから呼び出す用。
-    """
-    user = _find_by_id(user_id)
+    user = await _find_by_id(user_id)
     if user is None:
         raise HTTPException(404, "ユーザーが見つかりません")
     return user
 
 
+# ===================================================================
+# Stripe 課金連携
+# ===================================================================
+
 async def set_stripe_customer_id(user_id: str, customer_id: str) -> None:
-    """Stripe カスタマー ID をユーザーレコードに保存する"""
-    user = _find_by_id(user_id)
+    user = await _find_by_id(user_id)
     if user is None:
         raise HTTPException(404, "ユーザーが見つかりません")
     user.stripe_customer_id = customer_id
-    _save_user(user)
+    await _save_user(user)
 
 
 async def activate_premium(user_id: str, subscription_id: str) -> None:
-    """
-    Stripe Webhook（checkout.session.completed）受信後にプレミアムを有効化する。
-    subscription_id を保存し is_premium = True にする。
-    """
-    user = _find_by_id(user_id)
+    user = await _find_by_id(user_id)
     if user is None:
-        return  # ユーザーが存在しない場合は無視
+        return
     user.is_premium = True
     user.stripe_subscription_id = subscription_id
-    _save_user(user)
+    await _save_user(user)
 
 
 async def deactivate_premium_by_customer(customer_id: str) -> None:
-    """
-    Stripe Webhook（customer.subscription.deleted）受信後にプレミアムを無効化する。
-    customer_id でユーザーを検索して is_premium = False にする。
-    """
-    # インメモリDB全体を走査して customer_id が一致するユーザーを探す
-    target: Optional[UserRecord] = None
-    for user in _users_by_id.values():
-        if user.stripe_customer_id == customer_id:
-            target = user
-            break
-    if target is None:
+    user = await _find_by_stripe_customer(customer_id)
+    if user is None:
         return
-    target.is_premium = False
-    target.stripe_subscription_id = None
-    _save_user(target)
+    user.is_premium = False
+    user.stripe_subscription_id = None
+    await _save_user(user)
 
 
 # ===================================================================
 # OAuth 2.0 — 共通
 # ===================================================================
 
-def _generate_state() -> str:
-    """CSRF対策用のランダムなstateを生成してインメモリに保存する"""
+def _generate_state(redirect_uri: str) -> str:
+    """CSRF対策用のランダムなstateを生成してredirect_uriと共にインメモリに保存する"""
     state = secrets.token_urlsafe(32)
-    _oauth_states.add(state)
+    _oauth_states[state] = redirect_uri
     return state
 
 
-def _validate_and_consume_state(state: str) -> None:
-    """stateを検証して使用済みにする。不正なstateは 400 を raise。"""
+def _validate_and_consume_state(state: str) -> str:
+    """stateを検証して使用済みにする。不正なstateは 400 を raise。redirect_uriを返す。"""
     if state not in _oauth_states:
         raise HTTPException(400, "不正なstateパラメータです（CSRF対策）")
-    _oauth_states.discard(state)
+    return _oauth_states.pop(state)
 
 
 async def _find_or_create_oauth_user(
@@ -292,16 +329,10 @@ async def _find_or_create_oauth_user(
     avatar: Optional[str],
     provider: str,
 ) -> UserRecord:
-    """
-    OAuthプロバイダーから取得したユーザー情報でDB検索し、
-    存在しなければ新規作成する。
-    同じメールでプロバイダーが異なる場合は既存アカウントに統合する。
-    """
-    user = _find_by_email(email)
+    user = await _find_by_email(email)
     if user is not None:
-        # アバター更新のみ行う（プロバイダーは最初に登録した方を優先）
         user.avatar = avatar
-        _save_user(user)
+        await _save_user(user)
         return user
 
     user = UserRecord(
@@ -312,7 +343,7 @@ async def _find_or_create_oauth_user(
         provider=provider,
         created_at=_now_utc(),
     )
-    _save_user(user)
+    await _save_user(user)
     return user
 
 
@@ -327,19 +358,16 @@ GOOGLE_USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v3/userinfo"
 GOOGLE_SCOPES = ["openid", "email", "profile"]
 
 
-def get_google_auth_url(state: Optional[str] = None) -> str:
-    """
-    Google OAuth 認証URLを生成する。
-    state が None の場合はランダム生成（CSRF対策）。
-    """
+def get_google_auth_url(state: Optional[str] = None, redirect_uri: Optional[str] = None) -> str:
+    actual_redirect_uri = redirect_uri or settings.google_redirect_uri
     if state is None:
-        state = _generate_state()
+        state = _generate_state(actual_redirect_uri)
     else:
-        _oauth_states.add(state)
+        _oauth_states[state] = actual_redirect_uri
 
     params = {
         "client_id": settings.google_client_id,
-        "redirect_uri": settings.google_redirect_uri,
+        "redirect_uri": actual_redirect_uri,
         "response_type": "code",
         "scope": " ".join(GOOGLE_SCOPES),
         "state": state,
@@ -349,8 +377,7 @@ def get_google_auth_url(state: Optional[str] = None) -> str:
     return f"{GOOGLE_AUTH_ENDPOINT}?{urllib.parse.urlencode(params)}"
 
 
-async def _exchange_google_code(code: str) -> dict:
-    """認可コードをアクセストークンに交換する"""
+async def _exchange_google_code(code: str, redirect_uri: str) -> dict:
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.post(
             GOOGLE_TOKEN_ENDPOINT,
@@ -358,7 +385,7 @@ async def _exchange_google_code(code: str) -> dict:
                 "code": code,
                 "client_id": settings.google_client_id,
                 "client_secret": settings.google_client_secret,
-                "redirect_uri": settings.google_redirect_uri,
+                "redirect_uri": redirect_uri,
                 "grant_type": "authorization_code",
             },
         )
@@ -368,7 +395,6 @@ async def _exchange_google_code(code: str) -> dict:
 
 
 async def _fetch_google_user(access_token: str) -> dict:
-    """Google APIからユーザー情報を取得する"""
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(
             GOOGLE_USERINFO_ENDPOINT,
@@ -380,17 +406,8 @@ async def _fetch_google_user(access_token: str) -> dict:
 
 
 async def handle_google_callback(code: str, state: str) -> TokenResponse:
-    """
-    Googleのコールバックを処理してJWTトークンを返す。
-    1. state 検証（CSRF対策）
-    2. code → access_token 交換
-    3. ユーザー情報取得
-    4. DB登録 or 更新
-    5. JWTトークン発行
-    """
-    _validate_and_consume_state(state)
-
-    token_data = await _exchange_google_code(code)
+    redirect_uri = _validate_and_consume_state(state)
+    token_data = await _exchange_google_code(code, redirect_uri)
     access_token = token_data.get("access_token")
     if not access_token:
         raise HTTPException(502, "Googleからアクセストークンを取得できませんでした")
@@ -420,19 +437,16 @@ DISCORD_USERINFO_ENDPOINT = "https://discord.com/api/users/@me"
 DISCORD_SCOPES = ["identify", "email"]
 
 
-def get_discord_auth_url(state: Optional[str] = None) -> str:
-    """
-    Discord OAuth 認証URLを生成する。
-    state が None の場合はランダム生成（CSRF対策）。
-    """
+def get_discord_auth_url(state: Optional[str] = None, redirect_uri: Optional[str] = None) -> str:
+    actual_redirect_uri = redirect_uri or settings.discord_redirect_uri
     if state is None:
-        state = _generate_state()
+        state = _generate_state(actual_redirect_uri)
     else:
-        _oauth_states.add(state)
+        _oauth_states[state] = actual_redirect_uri
 
     params = {
         "client_id": settings.discord_client_id,
-        "redirect_uri": settings.discord_redirect_uri,
+        "redirect_uri": actual_redirect_uri,
         "response_type": "code",
         "scope": " ".join(DISCORD_SCOPES),
         "state": state,
@@ -440,8 +454,7 @@ def get_discord_auth_url(state: Optional[str] = None) -> str:
     return f"{DISCORD_AUTH_ENDPOINT}?{urllib.parse.urlencode(params)}"
 
 
-async def _exchange_discord_code(code: str) -> dict:
-    """認可コードをアクセストークンに交換する"""
+async def _exchange_discord_code(code: str, redirect_uri: str) -> dict:
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.post(
             DISCORD_TOKEN_ENDPOINT,
@@ -449,7 +462,7 @@ async def _exchange_discord_code(code: str) -> dict:
                 "code": code,
                 "client_id": settings.discord_client_id,
                 "client_secret": settings.discord_client_secret,
-                "redirect_uri": settings.discord_redirect_uri,
+                "redirect_uri": redirect_uri,
                 "grant_type": "authorization_code",
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -460,7 +473,6 @@ async def _exchange_discord_code(code: str) -> dict:
 
 
 async def _fetch_discord_user(access_token: str) -> dict:
-    """Discord APIからユーザー情報を取得する"""
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(
             DISCORD_USERINFO_ENDPOINT,
@@ -472,13 +484,8 @@ async def _fetch_discord_user(access_token: str) -> dict:
 
 
 async def handle_discord_callback(code: str, state: str) -> TokenResponse:
-    """
-    Discordのコールバックを処理してJWTトークンを返す。
-    アバターURL: https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png
-    """
-    _validate_and_consume_state(state)
-
-    token_data = await _exchange_discord_code(code)
+    redirect_uri = _validate_and_consume_state(state)
+    token_data = await _exchange_discord_code(code, redirect_uri)
     access_token = token_data.get("access_token")
     if not access_token:
         raise HTTPException(502, "Discordからアクセストークンを取得できませんでした")
@@ -488,7 +495,6 @@ async def handle_discord_callback(code: str, state: str) -> TokenResponse:
     if not email:
         raise HTTPException(502, "Discordからメールアドレスを取得できませんでした")
 
-    # Discordアバター URL の組み立て
     avatar_hash = discord_user.get("avatar")
     discord_id = discord_user.get("id")
     avatar_url: Optional[str] = None
@@ -509,10 +515,6 @@ async def handle_discord_callback(code: str, state: str) -> TokenResponse:
 # ===================================================================
 
 async def handle_oauth_callback(provider: str, code: str, state: str) -> TokenResponse:
-    """
-    プロバイダー名に応じてコールバック処理を振り分ける。
-    ルーターから呼び出すためのファサード。
-    """
     if provider == "google":
         return await handle_google_callback(code, state)
     elif provider == "discord":

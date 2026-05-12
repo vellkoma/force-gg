@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.cache.redis import CacheClient
+from app.core import database
 from app.core.config import settings
 from app.routers import auth, champion, coaching, esports, match, stripe, summoner
 from app.services import esports_db
@@ -36,6 +37,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     logger.info("バックエンドサーバーを起動しています...")
 
+    # PostgreSQL 接続（失敗時はインメモリにフォールバック）
+    db_ok = await database.init()
+    app.state.db_connected = db_ok
+
     cache = CacheClient(redis_url=settings.redis_url)
     await cache.connect()
     app.state.cache = cache
@@ -52,6 +57,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("バックエンドサーバーをシャットダウンしています...")
     status_task.cancel()
     await cache.disconnect()
+    await database.close()
     await esports_db.close_db()
 
 

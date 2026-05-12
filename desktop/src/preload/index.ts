@@ -46,7 +46,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getGameflowPhase: () => ipcRenderer.invoke('lcu:getGameflowPhase'),
 
     /** LCU接続状態を確認する */
-    isConnected: (): Promise<boolean> => ipcRenderer.invoke('lcu:isConnected')
+    isConnected: (): Promise<boolean> => ipcRenderer.invoke('lcu:isConnected'),
+
+    /** ランク統計を取得する */
+    getRankedStats: () => ipcRenderer.invoke('lcu:getRankedStats')
   },
 
   // ---------- オーバーレイ ----------
@@ -99,6 +102,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     /** お気に入りチャンピオンを削除する */
     remove: (championId: number): Promise<void> =>
       ipcRenderer.invoke('favorites:remove', championId)
+  },
+
+  // ---------- 認証 ----------
+  auth: {
+    /** Googleアカウントでログインする（システムブラウザ経由） */
+    googleLogin: () => ipcRenderer.invoke('auth:googleLogin'),
+    /** Discordアカウントでログインする（システムブラウザ経由） */
+    discordLogin: () => ipcRenderer.invoke('auth:discordLogin'),
+  },
+
+  // ---------- アプリ拡張 ----------
+  system: {
+    setLoginItem: (enable: boolean): Promise<void> =>
+      ipcRenderer.invoke('app:setLoginItem', enable),
+    openLogFolder: (): Promise<void> => ipcRenderer.invoke('shell:openLogFolder')
   },
 
   // ---------- ウィンドウ操作 ----------

@@ -8,7 +8,8 @@
 import type {
   ChampSelectSession,
   LcuSummoner,
-  GameflowPhase
+  GameflowPhase,
+  LcuRankedStats
 } from '../types/lcu'
 
 export interface FavoriteChampion {
@@ -29,7 +30,22 @@ export interface DownloadProgress {
   total: number
 }
 
+export interface GoogleLoginResult {
+  token: string
+  refresh_token?: string
+  user?: { name?: string; is_premium?: boolean }
+}
+
+export interface GoogleLoginError {
+  error: string
+}
+
 export interface ElectronAPI {
+  auth: {
+    googleLogin: () => Promise<GoogleLoginResult | GoogleLoginError>
+    discordLogin: () => Promise<GoogleLoginResult | GoogleLoginError>
+  }
+
   lcu: {
     connect: () => Promise<boolean>
     getChampSelect: () => Promise<ChampSelectSession | null>
@@ -37,6 +53,7 @@ export interface ElectronAPI {
     isInGame: () => Promise<boolean>
     getGameflowPhase: () => Promise<GameflowPhase | null>
     isConnected: () => Promise<boolean>
+    getRankedStats: () => Promise<LcuRankedStats | null>
   }
 
   overlay: {
@@ -63,6 +80,11 @@ export interface ElectronAPI {
     list: () => Promise<FavoriteChampion[]>
     add: (championId: number, championName: string) => Promise<void>
     remove: (championId: number) => Promise<void>
+  }
+
+  system: {
+    setLoginItem: (enable: boolean) => Promise<void>
+    openLogFolder: () => Promise<void>
   }
 
   window: {
