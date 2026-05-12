@@ -71,12 +71,21 @@ async def update_league_icons() -> None:
         logger.warning("PANDASCORE_API_KEY 未設定 - リーグアイコンをスキップ")
         return
 
+    # 既存アイコンを確認し、不足しているリーグのみ取得
+    existing = await db.get_league_icons()
+    all_names = [cfg["name"] for cfg in LEAGUE_CONFIG.values()]
+    missing = [name for name in all_names if name not in existing]
+
+    if not missing:
+        logger.info("リーグアイコン: 全 %d 件取得済み - スキップ", len(all_names))
+        return
+
+    logger.info("リーグアイコン: %d 件未取得 → 取得開始", len(missing))
     auth = {"Authorization": f"Bearer {token}"}
     ok   = 0
 
     async with httpx.AsyncClient(headers=auth, timeout=15) as api:
-        for _, cfg in LEAGUE_CONFIG.items():
-            name = cfg["name"]
+        for name in missing:
             try:
                 r = await api.get(f"{PANDASCORE_API}/lol/leagues",
                                   params={"search[name]": name, "per_page": "5"})
@@ -98,7 +107,7 @@ async def update_league_icons() -> None:
                 logger.warning("  リーグアイコンエラー (%s): %s", name, e)
             await asyncio.sleep(0.3)
 
-    logger.info("リーグアイコン: %d/%d 件取得", ok, len(LEAGUE_CONFIG))
+    logger.info("リーグアイコン: %d/%d 件取得", ok, len(missing))
 
 
 # ─── スケジュール ──────────────────────────────────────────────
