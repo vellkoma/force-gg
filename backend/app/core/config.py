@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     # PostgreSQL接続URL
     database_url: str = ""  # postgresql://user:pass@host/dbname
 
+    # Railway PostgreSQL接続URL（sync_railway.py 用、本番デプロイには不使用）
+    railway_database_url: str = ""
+
     # フロントエンドURL（Stripeリダイレクト用）
     frontend_url: str = "http://localhost:5173"
 

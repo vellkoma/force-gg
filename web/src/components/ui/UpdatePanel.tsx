@@ -26,6 +26,12 @@ const TYPE_COLOR: Record<UpdateType, string> = {
 const UPDATES: UpdateEntry[] = [
   {
     date: '2026-05-14',
+    type: 'infra',
+    title: 'チャンピオン統計データ 本番反映（パッチ 16.2〜16.9）',
+    description: 'CHALLENGER / GRANDMASTER / MASTER 帯のチャンピオン統計・ビルド推奨データをパッチ 16.2.738〜16.9.772 分まで本番DBに反映しました。',
+  },
+  {
+    date: '2026-05-14',
     type: 'fix',
     title: 'Google OAuth デスクトップ認証修正',
     description: 'ブラウザのfavicon等リクエストにより認証がキャンセルされる問題を修正。OAuthコールバック以外のリクエストを無視するように対応。',
