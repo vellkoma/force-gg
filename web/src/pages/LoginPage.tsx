@@ -99,10 +99,10 @@ const LoginPage: FC = () => {
         <div className="text-center mb-8">
           <Link to="/" className="inline-block mb-4">
             <h1 className="text-3xl font-bold text-[#C89B3C] tracking-wider font-display">
-              LoLガイド
+              force.gg
             </h1>
           </Link>
-          <p className="text-[#6B7A99] text-sm">LoL Stats &amp; AI Coaching</p>
+          <p className="text-[#6B7A99] text-sm">LoL 統計 &amp; AI コーチング</p>
         </div>
 
         {/* カード */}
