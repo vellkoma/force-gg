@@ -49,7 +49,9 @@ const ForgotPasswordPage: FC = () => {
                 ✉
               </div>
               <p className="text-[#C8D8F0] text-sm leading-relaxed">
-                ご入力のメールアドレスにリセット用のリンクをお送りしました。<br />
+                ご入力のメールアドレスにリセット用のリンクをお送りしました。
+              </p>
+              <p className="text-[#6B7A99] text-sm leading-relaxed">
                 メールが届かない場合は迷惑メールフォルダをご確認ください。
               </p>
               <Link
