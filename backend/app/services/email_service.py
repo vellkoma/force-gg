@@ -1,26 +1,25 @@
 """
-メール送信サービス（aiosmtplib）
-SMTP設定が未設定の場合はコンソールにリセットURLを出力する（開発用フォールバック）
+メール送信サービス（Resend API）
+RESEND_API_KEY が未設定の場合はコンソールにリセットURLを出力する（開発用フォールバック）
 """
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
-import aiosmtplib
+import httpx
 from fastapi import HTTPException
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+RESEND_API_URL = "https://api.resend.com/emails"
+
 
 async def send_password_reset_email(email: str, name: str, reset_url: str) -> None:
     """パスワードリセットメールを送信する"""
-    if not settings.smtp_host or not settings.smtp_username:
-        logger.warning("SMTP未設定 — パスワードリセットURL（開発用）: %s", reset_url)
+    if not settings.resend_api_key:
+        logger.warning("RESEND_API_KEY未設定 — パスワードリセットURL（開発用）: %s", reset_url)
         return
 
-    subject = "【force.gg】パスワードリセットのご案内"
     html_body = f"""<!DOCTYPE html>
 <html>
 <body style="font-family: sans-serif; background: #070b14; color: #e0e6f0; padding: 32px; margin: 0;">
@@ -49,22 +48,22 @@ async def send_password_reset_email(email: str, name: str, reset_url: str) -> No
 </body>
 </html>"""
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email or settings.smtp_username}>"
-    msg["To"] = email
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    payload = {
+        "from": settings.email_from,
+        "to": [email],
+        "subject": "【force.gg】パスワードリセットのご案内",
+        "html": html_body,
+    }
 
-    try:
-        await aiosmtplib.send(
-            msg,
-            hostname=settings.smtp_host,
-            port=settings.smtp_port,
-            username=settings.smtp_username,
-            password=settings.smtp_password,
-            start_tls=True,
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(
+            RESEND_API_URL,
+            json=payload,
+            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
         )
-        logger.info("パスワードリセットメール送信完了: %s", email)
-    except Exception as exc:
-        logger.error("メール送信失敗: %s", exc)
+
+    if resp.status_code not in (200, 201):
+        logger.error("Resendメール送信失敗: %s %s", resp.status_code, resp.text)
         raise HTTPException(500, "メール送信に失敗しました。しばらくしてから再度お試しください。")
+
+    logger.info("パスワードリセットメール送信完了: %s", email)
