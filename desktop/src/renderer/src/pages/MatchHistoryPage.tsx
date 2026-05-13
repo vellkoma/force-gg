@@ -128,7 +128,7 @@ export function MatchHistoryPage(): JSX.Element {
 
   if (!isConnected || !summoner) {
     return (
-      <div className="p-6">
+      <div className="p-6 max-w-3xl mx-auto">
         <h1 className="text-xl font-bold text-[#c89b3c] mb-6">マッチ履歴</h1>
         <div className="bg-[#0f1923] rounded-lg border border-[#1e2a3a] p-8 text-center">
           <p className="text-gray-400">LoLクライアントに接続するとマッチ履歴が表示されます。</p>
@@ -138,7 +138,7 @@ export function MatchHistoryPage(): JSX.Element {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-[#c89b3c]">マッチ履歴</h1>

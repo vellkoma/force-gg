@@ -39,7 +39,7 @@ export function DesktopHomePage(): JSX.Element {
   }, [])
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-6 max-w-2xl mx-auto space-y-5">
       {/* LCU 接続ステータス */}
       <section className="bg-[#0f1923] rounded-lg border border-[#1e2a3a] p-5">
         <div className="flex items-center justify-between">

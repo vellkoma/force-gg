@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { HomeSearchBar } from '@/components/search/HomeSearchBar'
 import { AdBanner } from '@/components/ads/AdBanner'
 import { EsportsSchedule } from '@/components/esports/EsportsSchedule'
+import { UpdatePanel } from '@/components/ui/UpdatePanel'
 
 const HomePage: FC = () => {
   return (
@@ -28,6 +29,9 @@ const HomePage: FC = () => {
 
       {/* Esports スケジュール */}
       <EsportsSchedule />
+
+      {/* 開発中アップデートパネル（公開時に削除予定） */}
+      <UpdatePanel />
 
       {/* フッター */}
       <footer className="border-t border-lol-border mt-4 py-8">

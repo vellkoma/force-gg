@@ -105,7 +105,7 @@ export function SettingsPage(): JSX.Element {
   }
 
   return (
-    <div className="p-6 max-w-lg space-y-5">
+    <div className="p-6 max-w-lg mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-[#c89b3c]">設定</h1>
         {saving && <span className="text-xs text-gray-500">保存中...</span>}

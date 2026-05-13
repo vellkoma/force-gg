@@ -223,6 +223,13 @@ export function registerIpcHandlers(): void {
           const state = reqUrl.searchParams.get('state')
           const oauthError = reqUrl.searchParams.get('error')
 
+          // OAuthコールバック以外のリクエスト（favicon等）は無視する
+          if (!code && !state && !oauthError) {
+            res.writeHead(204)
+            res.end()
+            return
+          }
+
           const success = !oauthError && !!code && !!state
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
           res.end(`<!DOCTYPE html>

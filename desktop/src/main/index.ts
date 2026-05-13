@@ -6,6 +6,10 @@
  */
 
 import { app, BrowserWindow, Menu, shell, nativeTheme } from 'electron'
+
+// Chromium の内部ログをターミナルに流さない（文字化け防止）
+app.commandLine.appendSwitch('disable-logging')
+app.commandLine.appendSwitch('log-level', '3')
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'

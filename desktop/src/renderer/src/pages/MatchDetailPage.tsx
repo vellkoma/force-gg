@@ -187,7 +187,7 @@ export function MatchDetailPage(): JSX.Element {
 
   if (!state?.match) {
     return (
-      <div className="p-6">
+      <div className="p-6 max-w-5xl mx-auto">
         <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white mb-4">
           ← 戻る
         </button>
@@ -202,7 +202,7 @@ export function MatchDetailPage(): JSX.Element {
   const blueWin = blueTeam[0]?.win ?? false
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-5">
         <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white transition-colors">
           ←

@@ -9,6 +9,7 @@ export function AccountPage(): JSX.Element {
   const navigate = useNavigate()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [username, setUsername] = useState<string | null>(null)
+  const [avatar, setAvatar] = useState<string | null>(null)
   const [isPremium, setIsPremium] = useState(false)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('login')
@@ -32,15 +33,33 @@ export function AccountPage(): JSX.Element {
 
   useEffect(() => {
     async function loadStoredAuth(): Promise<void> {
-      const [token, storedUsername, premium] = await Promise.all([
+      const [token, storedUsername, premium, storedAvatar] = await Promise.all([
         window.electronAPI.settings.get('auth_access_token'),
         window.electronAPI.settings.get('auth_username'),
         window.electronAPI.settings.get('auth_is_premium', 'false'),
+        window.electronAPI.settings.get('auth_avatar'),
       ])
       if (token && storedUsername) {
         setIsLoggedIn(true)
         setUsername(storedUsername)
         setIsPremium(premium === 'true')
+        let resolvedAvatar = storedAvatar || null
+        // アバターが未保存の場合はサーバーから取得して保存
+        if (!storedAvatar) {
+          try {
+            const meRes = await fetch(`${API_BASE}/api/auth/me`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            if (meRes.ok) {
+              const me = (await meRes.json()) as { avatar?: string }
+              resolvedAvatar = me.avatar ?? null
+              if (resolvedAvatar) {
+                await window.electronAPI.settings.set('auth_avatar', resolvedAvatar)
+              }
+            }
+          } catch { /* 失敗してもログイン状態は維持 */ }
+        }
+        setAvatar(resolvedAvatar)
       }
       setLoading(false)
     }
@@ -51,18 +70,20 @@ export function AccountPage(): JSX.Element {
     async (data: {
       token: string
       refresh_token?: string
-      user?: { name?: string; is_premium?: boolean }
+      user?: { name?: string; is_premium?: boolean; avatar?: string }
     }, fallbackName: string) => {
       let isPremiumFromServer = data.user?.is_premium ?? false
       let resolvedUsername = data.user?.name ?? fallbackName
+      let resolvedAvatar = data.user?.avatar ?? null
       try {
         const meRes = await fetch(`${API_BASE}/api/auth/me`, {
           headers: { Authorization: `Bearer ${data.token}` },
         })
         if (meRes.ok) {
-          const me = (await meRes.json()) as { is_premium?: boolean; name?: string }
+          const me = (await meRes.json()) as { is_premium?: boolean; name?: string; avatar?: string }
           isPremiumFromServer = me.is_premium ?? false
           resolvedUsername = me.name ?? resolvedUsername
+          resolvedAvatar = me.avatar ?? resolvedAvatar
         }
       } catch {
         // /me 失敗はログインを妨げない
@@ -74,10 +95,12 @@ export function AccountPage(): JSX.Element {
           : Promise.resolve(),
         window.electronAPI.settings.set('auth_username', resolvedUsername),
         window.electronAPI.settings.set('auth_is_premium', String(isPremiumFromServer)),
+        window.electronAPI.settings.set('auth_avatar', resolvedAvatar ?? ''),
       ])
       setIsLoggedIn(true)
       setUsername(resolvedUsername)
       setIsPremium(isPremiumFromServer)
+      setAvatar(resolvedAvatar)
     },
     []
   )
@@ -191,17 +214,19 @@ export function AccountPage(): JSX.Element {
       window.electronAPI.settings.set('auth_refresh_token', ''),
       window.electronAPI.settings.set('auth_username', ''),
       window.electronAPI.settings.set('auth_is_premium', 'false'),
+      window.electronAPI.settings.set('auth_avatar', ''),
     ])
     setIsLoggedIn(false)
     setUsername(null)
     setIsPremium(false)
+    setAvatar(null)
   }, [])
 
   const isOAuthBusy = oauthLoading !== null
   const isBusy = isOAuthBusy || submitting || registering
 
   return (
-    <div className="p-6 max-w-md">
+    <div className="p-6 max-w-md mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate(-1)}
@@ -220,10 +245,19 @@ export function AccountPage(): JSX.Element {
         /* ─── ログイン済み ─── */
         <section className="bg-[#0f1923] rounded-lg border border-[#1e2a3a] p-6 space-y-5">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-[#1e2a3a] border-2 border-[#c89b3c] flex items-center justify-center">
-              <span className="text-[#c89b3c] text-xl font-bold uppercase">
-                {(username ?? 'U')[0]}
-              </span>
+            <div className="w-14 h-14 rounded-full bg-[#1e2a3a] border-2 border-[#c89b3c] overflow-hidden flex items-center justify-center shrink-0">
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt={username ?? 'アバター'}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+              ) : (
+                <span className="text-[#c89b3c] text-xl font-bold uppercase">
+                  {(username ?? 'U')[0]}
+                </span>
+              )}
             </div>
             <div>
               <p className="font-semibold text-white">{username}</p>

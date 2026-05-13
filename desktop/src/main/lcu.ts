@@ -29,7 +29,7 @@ function getLcuCredentialsFromProcess(): LcuCredentials | null {
     // LeagueClientUx.exe のコマンドライン引数を取得
     const output = execSync(
       'wmic PROCESS WHERE name="LeagueClientUx.exe" GET commandline',
-      { encoding: 'utf8', windowsHide: true, timeout: 5000 }
+      { encoding: 'utf8', windowsHide: true, timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
     )
 
     const portMatch = output.match(/--app-port=(\d+)/)
