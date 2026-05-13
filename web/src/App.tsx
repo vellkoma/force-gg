@@ -14,6 +14,8 @@ const PremiumPage       = lazy(() => import('@/pages/PremiumPage'))
 const ChampionDetailPage = lazy(() => import('@/pages/ChampionDetailPage'))
 const LoginPage            = lazy(() => import('@/pages/LoginPage'))
 const RegisterPage         = lazy(() => import('@/pages/RegisterPage'))
+const ForgotPasswordPage   = lazy(() => import('@/pages/ForgotPasswordPage'))
+const ResetPasswordPage    = lazy(() => import('@/pages/ResetPasswordPage'))
 const OAuthCallback        = lazy(() => import('@/components/auth/OAuthCallback'))
 const PremiumSuccessPage   = lazy(() => import('@/pages/PremiumSuccessPage'))
 const PremiumCancelPage    = lazy(() => import('@/pages/PremiumCancelPage'))
@@ -113,9 +115,11 @@ const router = createBrowserRouter([
   {
     element: <AuthLayout />,
     children: [
-      { path: '/login',          element: <LoginPage /> },
-      { path: '/register',       element: <RegisterPage /> },
-      { path: '/oauth/callback', element: <OAuthCallback /> },
+      { path: '/login',            element: <LoginPage /> },
+      { path: '/register',         element: <RegisterPage /> },
+      { path: '/forgot-password',  element: <ForgotPasswordPage /> },
+      { path: '/reset-password',   element: <ResetPasswordPage /> },
+      { path: '/oauth/callback',   element: <OAuthCallback /> },
     ],
   },
   // メインページ（ヘッダーあり）

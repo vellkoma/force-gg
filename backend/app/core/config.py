@@ -92,6 +92,14 @@ class Settings(BaseSettings):
     # フロントエンドURL（Stripeリダイレクト用）
     frontend_url: str = "http://localhost:5173"
 
+    # SMTP メール送信設定（パスワードリセット用）
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "force.gg"
+
     # キャッシュTTL（秒）
     cache_ttl_summoner: int = 600
     cache_ttl_match_list: int = 3600

@@ -87,3 +87,11 @@ async def _create_tables() -> None:
             "CREATE INDEX IF NOT EXISTS idx_users_stripe_customer "
             "ON users (stripe_customer_id) WHERE stripe_customer_id IS NOT NULL"
         )
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                token      TEXT PRIMARY KEY,
+                user_id    TEXT NOT NULL,
+                expires_at TIMESTAMPTZ NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)

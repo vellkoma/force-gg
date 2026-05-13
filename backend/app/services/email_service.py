@@ -1,0 +1,70 @@
+"""
+メール送信サービス（aiosmtplib）
+SMTP設定が未設定の場合はコンソールにリセットURLを出力する（開発用フォールバック）
+"""
+import logging
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+import aiosmtplib
+from fastapi import HTTPException
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+async def send_password_reset_email(email: str, name: str, reset_url: str) -> None:
+    """パスワードリセットメールを送信する"""
+    if not settings.smtp_host or not settings.smtp_username:
+        logger.warning("SMTP未設定 — パスワードリセットURL（開発用）: %s", reset_url)
+        return
+
+    subject = "【force.gg】パスワードリセットのご案内"
+    html_body = f"""<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; background: #070b14; color: #e0e6f0; padding: 32px; margin: 0;">
+  <div style="max-width: 480px; margin: 0 auto; background: #0d1626; border: 1px solid #1e2a40; border-radius: 12px; padding: 32px;">
+    <h1 style="color: #c89b3c; font-size: 22px; margin: 0 0 4px 0; font-weight: bold; letter-spacing: 2px;">force.gg</h1>
+    <p style="color: #6b7a99; font-size: 13px; margin: 0 0 28px 0;">LoL 統計 &amp; AI コーチング</p>
+    <p style="margin: 0 0 12px 0;">こんにちは、{name} さん</p>
+    <p style="margin: 0 0 28px 0; line-height: 1.7; color: #c8d8f0;">
+      パスワードリセットのリクエストを受け付けました。<br>
+      以下のボタンをクリックして新しいパスワードを設定してください。
+    </p>
+    <div style="text-align: center; margin: 0 0 28px 0;">
+      <a href="{reset_url}"
+         style="background: #c89b3c; color: #070b14; font-weight: bold; padding: 14px 36px;
+                border-radius: 10px; text-decoration: none; display: inline-block; font-size: 15px;">
+        パスワードをリセット
+      </a>
+    </div>
+    <p style="color: #6b7a99; font-size: 12px; line-height: 1.7; margin: 0 0 8px 0;">
+      このリンクは <strong>1時間</strong> で有効期限が切れます。
+    </p>
+    <p style="color: #6b7a99; font-size: 12px; margin: 0;">
+      身に覚えのない場合はこのメールを無視してください。
+    </p>
+  </div>
+</body>
+</html>"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email or settings.smtp_username}>"
+    msg["To"] = email
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    try:
+        await aiosmtplib.send(
+            msg,
+            hostname=settings.smtp_host,
+            port=settings.smtp_port,
+            username=settings.smtp_username,
+            password=settings.smtp_password,
+            start_tls=True,
+        )
+        logger.info("パスワードリセットメール送信完了: %s", email)
+    except Exception as exc:
+        logger.error("メール送信失敗: %s", exc)
+        raise HTTPException(500, "メール送信に失敗しました。しばらくしてから再度お試しください。")

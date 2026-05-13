@@ -39,6 +39,9 @@ _mem_by_id: dict[str, UserRecord] = {}
 # 本番ではRedisに保存するべきだが、短命な値なのでインメモリで問題ない。
 _oauth_states: dict[str, str] = {}
 
+# パスワードリセットトークン（インメモリフォールバック）
+_reset_tokens: dict[str, dict] = {}  # token -> {user_id, expires_at}
+
 
 # ===================================================================
 # 内部ユーティリティ
@@ -303,6 +306,94 @@ async def deactivate_premium_by_customer(customer_id: str) -> None:
     user.is_premium = False
     user.stripe_subscription_id = None
     await _save_user(user)
+
+
+# ===================================================================
+# パスワードリセット
+# ===================================================================
+
+async def _save_reset_token(token: str, user_id: str, expires_at: datetime) -> None:
+    pool = database.get_pool()
+    if pool:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO password_reset_tokens (token, user_id, expires_at)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (token) DO UPDATE SET
+                    user_id = EXCLUDED.user_id,
+                    expires_at = EXCLUDED.expires_at
+                """,
+                token, user_id, expires_at,
+            )
+        return
+    _reset_tokens[token] = {"user_id": user_id, "expires_at": expires_at}
+
+
+async def _find_reset_token(token: str) -> Optional[dict]:
+    pool = database.get_pool()
+    if pool:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT user_id, expires_at FROM password_reset_tokens WHERE token = $1",
+                token,
+            )
+            if row is None:
+                return None
+            return {"user_id": row["user_id"], "expires_at": row["expires_at"]}
+    return _reset_tokens.get(token)
+
+
+async def _delete_reset_token(token: str) -> None:
+    pool = database.get_pool()
+    if pool:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM password_reset_tokens WHERE token = $1", token
+            )
+        return
+    _reset_tokens.pop(token, None)
+
+
+async def request_password_reset(email: str) -> None:
+    """
+    パスワードリセットメールを送信する。
+    ユーザーが存在しない・OAuthアカウントの場合も同じレスポンスを返す（メール列挙攻撃対策）。
+    """
+    from app.services import email_service
+
+    user = await _find_by_email(email)
+    if user is None or user.provider != "email" or user.hashed_password is None:
+        return
+
+    token = secrets.token_urlsafe(32)
+    expires_at = _now_utc() + timedelta(hours=1)
+    await _save_reset_token(token, user.id, expires_at)
+
+    reset_url = f"{settings.frontend_url}/reset-password?token={token}"
+    await email_service.send_password_reset_email(user.email, user.name, reset_url)
+
+
+async def reset_password(token: str, new_password: str) -> None:
+    """トークンを検証して新しいパスワードを設定する（トークンは使い捨て）"""
+    token_data = await _find_reset_token(token)
+    if token_data is None:
+        raise HTTPException(400, "リセットリンクが無効または既に使用済みです")
+
+    expires_at = token_data["expires_at"]
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if _now_utc() > expires_at:
+        await _delete_reset_token(token)
+        raise HTTPException(400, "リセットリンクの有効期限が切れています。再度お試しください。")
+
+    user = await _find_by_id(token_data["user_id"])
+    if user is None:
+        raise HTTPException(400, "ユーザーが見つかりません")
+
+    user.hashed_password = _hash_password(new_password)
+    await _save_user(user)
+    await _delete_reset_token(token)
 
 
 # ===================================================================

@@ -64,6 +64,24 @@ class OAuthCallbackRequest(BaseModel):
     state: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    """パスワードリセットリクエスト（メール送信）"""
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """パスワードリセット実行"""
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("パスワードは8文字以上で入力してください")
+        return v
+
+
 # -------------------------------------------------------------------
 # 内部用レコード（インメモリDB用）
 # PostgreSQL 移行時はここを SQLAlchemy モデルに置き換える

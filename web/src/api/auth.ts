@@ -88,3 +88,27 @@ export const refreshToken = async (currentRefreshToken: string): Promise<Refresh
   })
   return data
 }
+
+/**
+ * パスワードリセットメールを送信
+ * POST /api/auth/forgot-password
+ */
+export const forgotPassword = async (email: string): Promise<{ message: string }> => {
+  const { data } = await apiClient.post<{ message: string }>('/api/auth/forgot-password', { email })
+  return data
+}
+
+/**
+ * パスワードリセット実行
+ * POST /api/auth/reset-password
+ */
+export const resetPassword = async (
+  token: string,
+  newPassword: string,
+): Promise<{ message: string }> => {
+  const { data } = await apiClient.post<{ message: string }>('/api/auth/reset-password', {
+    token,
+    new_password: newPassword,
+  })
+  return data
+}

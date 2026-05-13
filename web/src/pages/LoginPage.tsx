@@ -204,8 +204,15 @@ const LoginPage: FC = () => {
             </button>
           </form>
 
+          {/* パスワードを忘れた */}
+          <p className="text-center text-sm text-[#6B7A99] mt-4">
+            <Link to="/forgot-password" className="text-[#6B7A99] hover:text-[#00C6FF] transition-colors">
+              パスワードをお忘れの方
+            </Link>
+          </p>
+
           {/* 登録リンク */}
-          <p className="text-center text-sm text-[#6B7A99] mt-6">
+          <p className="text-center text-sm text-[#6B7A99] mt-3">
             アカウントをお持ちでない方は{' '}
             <Link to="/register" className="text-[#00C6FF] hover:underline">
               こちら

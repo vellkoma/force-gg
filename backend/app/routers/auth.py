@@ -10,8 +10,10 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Header, Query
 
 from app.models.user import (
+    ForgotPasswordRequest,
     OAuthCallbackRequest,
     RefreshRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UserCreate,
     UserLogin,
@@ -147,6 +149,23 @@ async def refresh_token(body: RefreshRequest) -> TokenResponse:
 # -------------------------------------------------------------------
 # ログアウト
 # -------------------------------------------------------------------
+
+@router.post("/forgot-password", status_code=200)
+async def forgot_password(body: ForgotPasswordRequest) -> dict:
+    """
+    パスワードリセットメールを送信する。
+    メールアドレスの存在有無に関わらず同じレスポンスを返す（メール列挙攻撃対策）。
+    """
+    await auth_service.request_password_reset(body.email)
+    return {"message": "ご登録のメールアドレスにリセット用のリンクをお送りしました。"}
+
+
+@router.post("/reset-password", status_code=200)
+async def reset_password(body: ResetPasswordRequest) -> dict:
+    """トークンを使ってパスワードをリセットする"""
+    await auth_service.reset_password(body.token, body.new_password)
+    return {"message": "パスワードを変更しました。新しいパスワードでログインしてください。"}
+
 
 @router.post("/logout")
 async def logout() -> dict:
