@@ -358,12 +358,20 @@ async def _delete_reset_token(token: str) -> None:
 async def request_password_reset(email: str) -> None:
     """
     パスワードリセットメールを送信する。
-    ユーザーが存在しない・OAuthアカウントの場合も同じレスポンスを返す（メール列挙攻撃対策）。
+    - email登録ユーザー → リセットリンクを送信
+    - OAuth登録ユーザー → ログイン方法を案内するメールを送信
+    - 存在しないメール → 何もしない（メール列挙攻撃対策）
     """
     from app.services import email_service
 
     user = await _find_by_email(email)
-    if user is None or user.provider != "email" or user.hashed_password is None:
+    if user is None:
+        return
+
+    if user.provider != "email" or user.hashed_password is None:
+        await email_service.send_oauth_account_notice_email(
+            user.email, user.name, user.provider
+        )
         return
 
     token = secrets.token_urlsafe(32)
