@@ -382,6 +382,15 @@ async def request_password_reset(email: str) -> None:
     await email_service.send_password_reset_email(user.email, user.name, reset_url)
 
 
+async def set_password_for_user(user_id: str, new_password: str) -> None:
+    """ログイン済みユーザーがパスワードを設定する（OAuth アカウント用）"""
+    user = await _find_by_id(user_id)
+    if user is None:
+        raise HTTPException(404, "ユーザーが見つかりません")
+    user.hashed_password = _hash_password(new_password)
+    await _save_user(user)
+
+
 async def reset_password(token: str, new_password: str) -> None:
     """トークンを検証して新しいパスワードを設定する（トークンは使い捨て）"""
     token_data = await _find_reset_token(token)

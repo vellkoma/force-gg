@@ -21,6 +21,7 @@ const PremiumSuccessPage   = lazy(() => import('@/pages/PremiumSuccessPage'))
 const PremiumCancelPage    = lazy(() => import('@/pages/PremiumCancelPage'))
 const CoachingPage         = lazy(() => import('@/pages/CoachingPage'))
 const DownloadPage         = lazy(() => import('@/pages/DownloadPage'))
+const ProfilePage          = lazy(() => import('@/pages/ProfilePage'))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -137,6 +138,7 @@ const router = createBrowserRouter([
       { path: '/premium/cancel',                element: <PremiumCancelPage /> },
       { path: '/coaching',                      element: <CoachingPage /> },
       { path: '/download',                      element: <DownloadPage /> },
+      { path: '/profile',                       element: <ProfilePage /> },
     ],
   },
 ])

@@ -90,6 +90,17 @@ export const refreshToken = async (currentRefreshToken: string): Promise<Refresh
 }
 
 /**
+ * パスワードを設定する（OAuth アカウント用）
+ * POST /api/auth/set-password
+ */
+export const setPassword = async (newPassword: string): Promise<{ message: string }> => {
+  const { data } = await apiClient.post<{ message: string }>('/api/auth/set-password', {
+    new_password: newPassword,
+  })
+  return data
+}
+
+/**
  * パスワードリセットメールを送信
  * POST /api/auth/forgot-password
  */

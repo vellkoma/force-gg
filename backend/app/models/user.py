@@ -82,6 +82,18 @@ class ResetPasswordRequest(BaseModel):
         return v
 
 
+class SetPasswordRequest(BaseModel):
+    """ログイン済みユーザーによるパスワード設定（OAuth アカウント用）"""
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("パスワードは8文字以上で入力してください")
+        return v
+
+
 # -------------------------------------------------------------------
 # 内部用レコード（インメモリDB用）
 # PostgreSQL 移行時はここを SQLAlchemy モデルに置き換える

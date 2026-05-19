@@ -14,6 +14,7 @@ from app.models.user import (
     OAuthCallbackRequest,
     RefreshRequest,
     ResetPasswordRequest,
+    SetPasswordRequest,
     TokenResponse,
     UserCreate,
     UserLogin,
@@ -149,6 +150,26 @@ async def refresh_token(body: RefreshRequest) -> TokenResponse:
 # -------------------------------------------------------------------
 # ログアウト
 # -------------------------------------------------------------------
+
+@router.post("/set-password", status_code=200)
+async def set_password(
+    body: SetPasswordRequest,
+    authorization: Annotated[Optional[str], Header()] = None,
+) -> dict:
+    """
+    ログイン済みユーザーがパスワードを設定する。
+    Google / Discord アカウントがメールログインも使えるようにする。
+    Authorization: Bearer <token> ヘッダーが必要。
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        from fastapi import HTTPException
+        raise HTTPException(401, "認証が必要です")
+    token = authorization.removeprefix("Bearer ").strip()
+    payload = auth_service.verify_token(token, expected_type="access")
+    user_id = payload.get("sub")
+    await auth_service.set_password_for_user(user_id, body.new_password)
+    return {"message": "パスワードを設定しました。メールアドレスとパスワードでもログインできるようになりました。"}
+
 
 @router.post("/forgot-password", status_code=200)
 async def forgot_password(body: ForgotPasswordRequest) -> dict:
