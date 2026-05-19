@@ -4,8 +4,9 @@ export interface User {
   name: string
   avatar?: string
   provider: 'google' | 'discord' | 'email'
-  hasPassword: boolean
-  isPremium: boolean
+  has_password: boolean
+  is_premium: boolean
+  isPremium: boolean        // 後方互換（is_premium の別名）
   premiumExpiresAt?: string
 }
 

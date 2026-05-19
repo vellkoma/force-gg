@@ -72,7 +72,7 @@ const ProfilePage: FC = () => {
               {providerLabel}
             </span>
           )}
-          {(user.provider === 'email' || user.hasPassword) && (
+          {(user.provider === 'email' || user.has_password) && (
             <span className="text-xs font-bold text-[#C8D8F0] bg-[#1E2A40] px-2 py-0.5 rounded-full">
               メール/パスワード
             </span>
@@ -83,7 +83,7 @@ const ProfilePage: FC = () => {
       {/* パスワード設定（Google/Discord アカウント、またはパスワード未設定の場合） */}
       <div className="bg-[#0D1626] border border-[#1E2A40] rounded-2xl p-6">
         <h2 className="text-sm font-bold text-[#6B7A99] uppercase tracking-wider mb-1">
-          {user.provider === 'email' ? 'パスワード変更' : 'パスワードを追加'}
+          {user.provider === 'email' || user.has_password ? 'パスワード変更' : 'パスワードを追加'}
         </h2>
         {user.provider !== 'email' && (
           <p className="text-[#6B7A99] text-xs mb-4 leading-relaxed">
