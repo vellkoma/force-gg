@@ -4,6 +4,7 @@ export interface User {
   name: string
   avatar?: string
   provider: 'google' | 'discord' | 'email'
+  hasPassword: boolean
   isPremium: boolean
   premiumExpiresAt?: string
 }

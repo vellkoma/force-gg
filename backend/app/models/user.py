@@ -41,6 +41,7 @@ class UserResponse(BaseModel):
     name: str
     avatar: Optional[str] = None
     provider: str  # 'google' | 'discord' | 'email'
+    has_password: bool = False  # パスワードが設定済みかどうか
     is_premium: bool = False
     premium_expires_at: Optional[datetime] = None
 
@@ -120,6 +121,7 @@ class UserRecord(BaseModel):
             name=self.name,
             avatar=self.avatar,
             provider=self.provider,
+            has_password=self.hashed_password is not None,
             is_premium=self.is_premium,
             premium_expires_at=self.premium_expires_at,
         )

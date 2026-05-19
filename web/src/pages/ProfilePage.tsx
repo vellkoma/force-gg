@@ -1,9 +1,9 @@
 import { useState, type FC, type FormEvent } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { setPassword } from '@/api/auth'
+import { setPassword, getMe } from '@/api/auth'
 
 const ProfilePage: FC = () => {
-  const { user } = useAuth()
+  const { user, login, token } = useAuth()
 
   const [password, setPasswordValue] = useState('')
   const [confirm, setConfirm]         = useState('')
@@ -35,6 +35,9 @@ const ProfilePage: FC = () => {
       setSuccess(res.message)
       setPasswordValue('')
       setConfirm('')
+      // ユーザー情報を再取得してログイン方法表示を更新
+      const updatedUser = await getMe()
+      if (token) login(token, updatedUser)
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'パスワードの設定に失敗しました。')
     } finally {
@@ -62,12 +65,14 @@ const ProfilePage: FC = () => {
             <p className="text-[#6B7A99] text-sm">{user.email}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-[#6B7A99]">ログイン方法:</span>
-          <span className="text-xs font-bold text-[#C8D8F0] bg-[#1E2A40] px-2 py-0.5 rounded-full">
-            {providerLabel}
-          </span>
-          {user.provider === 'email' && (
+          {user.provider !== 'email' && (
+            <span className="text-xs font-bold text-[#C8D8F0] bg-[#1E2A40] px-2 py-0.5 rounded-full">
+              {providerLabel}
+            </span>
+          )}
+          {(user.provider === 'email' || user.hasPassword) && (
             <span className="text-xs font-bold text-[#C8D8F0] bg-[#1E2A40] px-2 py-0.5 rounded-full">
               メール/パスワード
             </span>
