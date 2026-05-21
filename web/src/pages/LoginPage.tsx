@@ -67,6 +67,7 @@ const LoginPage: FC = () => {
     setError(null)
     try {
       const { url } = await getGoogleAuthUrl()
+      sessionStorage.setItem('oauth_provider', 'google')
       window.location.href = url
     } catch {
       setError('Googleログイン用のURLの取得に失敗しました。')
@@ -79,6 +80,7 @@ const LoginPage: FC = () => {
     setError(null)
     try {
       const { url } = await getDiscordAuthUrl()
+      sessionStorage.setItem('oauth_provider', 'discord')
       window.location.href = url
     } catch {
       setError('Discordログイン用のURLの取得に失敗しました。')

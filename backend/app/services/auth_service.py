@@ -568,36 +568,58 @@ def get_discord_auth_url(state: Optional[str] = None, redirect_uri: Optional[str
 
 
 async def _exchange_discord_code(code: str, redirect_uri: str) -> dict:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(
-            DISCORD_TOKEN_ENDPOINT,
-            data={
-                "code": code,
-                "client_id": settings.discord_client_id,
-                "client_secret": settings.discord_client_secret,
-                "redirect_uri": redirect_uri,
-                "grant_type": "authorization_code",
-            },
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
-    if resp.status_code != 200:
+    logger.info(
+        "Discord token exchange start: redirect_uri=%s client_id=%s client_secret_set=%s",
+        redirect_uri, settings.discord_client_id, bool(settings.discord_client_secret)
+    )
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                DISCORD_TOKEN_ENDPOINT,
+                data={
+                    "code": code,
+                    "client_id": settings.discord_client_id,
+                    "client_secret": settings.discord_client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+        logger.info("Discord token exchange response: status=%s", resp.status_code)
+        if resp.status_code != 200:
+            logger.error(
+                "Discord token exchange failed: status=%s body=%s redirect_uri=%s client_id=%s",
+                resp.status_code, resp.text, redirect_uri, settings.discord_client_id
+            )
+            raise HTTPException(502, f"Discordトークン取得に失敗しました (status={resp.status_code})")
+        return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
         logger.error(
-            "Discord token exchange failed: status=%s body=%s redirect_uri=%s client_id=%s",
-            resp.status_code, resp.text, redirect_uri, settings.discord_client_id
+            "Discord token exchange exception: type=%s msg=%s redirect_uri=%s",
+            type(e).__name__, str(e), redirect_uri
         )
-        raise HTTPException(502, f"Discordトークン取得に失敗しました (status={resp.status_code})")
-    return resp.json()
+        raise HTTPException(502, f"Discord接続エラー: {type(e).__name__}")
 
 
 async def _fetch_discord_user(access_token: str) -> dict:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(
-            DISCORD_USERINFO_ENDPOINT,
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-    if resp.status_code != 200:
-        raise HTTPException(502, "Discordユーザー情報取得に失敗しました")
-    return resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                DISCORD_USERINFO_ENDPOINT,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        logger.info("Discord user fetch response: status=%s", resp.status_code)
+        if resp.status_code != 200:
+            logger.error("Discord user fetch failed: status=%s body=%s", resp.status_code, resp.text)
+            raise HTTPException(502, "Discordユーザー情報取得に失敗しました")
+        return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Discord user fetch exception: type=%s msg=%s", type(e).__name__, str(e))
+        raise HTTPException(502, f"Discordユーザー情報取得エラー: {type(e).__name__}")
 
 
 async def handle_discord_callback(code: str, state: str) -> TokenResponse:

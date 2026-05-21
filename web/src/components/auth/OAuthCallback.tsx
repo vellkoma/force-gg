@@ -19,10 +19,14 @@ const OAuthCallback: FC = () => {
     if (calledRef.current) return
     calledRef.current = true
 
-    const code     = searchParams.get('code')     ?? ''
-    const state    = searchParams.get('state')    ?? ''
-    const provider = searchParams.get('provider') ?? 'google'
+    const code     = searchParams.get('code')  ?? ''
+    const state    = searchParams.get('state') ?? ''
     const error    = searchParams.get('error')
+    // Discordはコールバック時にproviderパラメータを付与しないためsessionStorageから復元
+    const provider = searchParams.get('provider')
+      ?? sessionStorage.getItem('oauth_provider')
+      ?? 'google'
+    sessionStorage.removeItem('oauth_provider')
 
     if (error) {
       console.error('OAuth認証エラー:', error)
