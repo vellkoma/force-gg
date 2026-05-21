@@ -179,9 +179,9 @@ async def get_live_and_upcoming() -> JSONResponse:
     pool = db._pool_or_raise()
 
     live_rows = await pool.fetch(
-        "SELECT * FROM esports_matches WHERE status = 'running' ORDER BY begin_at ASC LIMIT 5"
+        "SELECT * FROM esports_matches WHERE status = 'running' ORDER BY begin_at ASC LIMIT 6"
     )
-    remaining = 5 - len(live_rows)
+    remaining = 6 - len(live_rows)
     upcoming_rows = []
     if remaining > 0:
         upcoming_rows = await pool.fetch(

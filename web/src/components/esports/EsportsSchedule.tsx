@@ -423,16 +423,12 @@ export const EsportsSchedule: FC = () => {
 
   return (
     <section className="max-w-6xl mx-auto px-4 pb-12">
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch">
       <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden flex-1 min-w-0">
         {/* ヘッダー */}
         <div className="border-b border-lol-border bg-[#0a1020]">
           {/* タイトル行 */}
-          <div className="flex items-center justify-between px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-lol-accent" />
-              <h2 className="font-display font-bold text-sm text-lol-text">プロシーン スケジュール</h2>
-            </div>
+          <div className="flex items-center justify-end px-4 py-2.5">
             <a href={`https://lolesports.com/schedule?leagues=${currentLeague.name.toLowerCase()}`}
               target="_blank" rel="noopener noreferrer"
               className="text-xs text-lol-accent hover:underline">

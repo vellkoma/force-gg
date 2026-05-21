@@ -120,9 +120,9 @@ export const LiveMatchPanel: FC = () => {
   const hasLive = matches.some(m => m.status === 'running')
 
   return (
-    <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden w-full lg:w-64 shrink-0">
+    <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden w-full lg:w-64 shrink-0 flex flex-col">
       {/* ヘッダー */}
-      <div className="border-b border-lol-border bg-[#0a1020] px-3 py-2.5 flex items-center gap-2">
+      <div className="border-b border-lol-border bg-[#0a1020] px-3 py-2.5 flex items-center gap-2 shrink-0">
         {hasLive
           ? <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_6px_#4ade80] animate-pulse shrink-0" />
           : <span className="w-2 h-2 rounded-full bg-lol-text-sub/30 shrink-0" />
@@ -133,21 +133,21 @@ export const LiveMatchPanel: FC = () => {
       </div>
 
       {/* リスト */}
-      {isLoading ? (
-        <div className="space-y-px">
-          {[...Array(5)].map((_, i) => (
+      <div className="flex-1">
+        {isLoading ? (
+          [...Array(6)].map((_, i) => (
             <div key={i} className="h-14 animate-pulse bg-lol-card border-b border-lol-border/30" />
-          ))}
-        </div>
-      ) : matches.length === 0 ? (
-        <div className="py-8 text-center">
-          <p className="text-lol-text-sub text-xs">試合予定はありません</p>
-        </div>
-      ) : (
-        matches.map(match => (
-          <LiveMatchCard key={match.id} match={match} />
-        ))
-      )}
+          ))
+        ) : matches.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-lol-text-sub text-xs">試合予定はありません</p>
+          </div>
+        ) : (
+          matches.map(match => (
+            <LiveMatchCard key={match.id} match={match} />
+          ))
+        )}
+      </div>
     </div>
   )
 }
