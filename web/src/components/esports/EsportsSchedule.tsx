@@ -425,20 +425,11 @@ export const EsportsSchedule: FC = () => {
     <section className="max-w-6xl mx-auto px-4 pb-12">
       <div className="flex flex-col lg:flex-row gap-4 items-stretch">
       <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden flex-1 min-w-0">
-        {/* ヘッダー */}
-        <div className="border-b border-lol-border bg-[#0a1020]">
-          {/* タイトル行 */}
-          <div className="flex items-center justify-end px-4 py-2.5">
-            <a href={`https://lolesports.com/schedule?leagues=${currentLeague.name.toLowerCase()}`}
-              target="_blank" rel="noopener noreferrer"
-              className="text-xs text-lol-accent hover:underline">
-              すべて見る →
-            </a>
-          </div>
-          {/* リーグタブ */}
+        {/* ヘッダー（タブ + すべて見る 1段） */}
+        <div className="border-b border-lol-border bg-[#0a1020] flex items-center pr-3">
           <div
             ref={tabsRef}
-            className="flex overflow-x-auto scrollbar-none px-2 pb-0 gap-0.5"
+            className="flex flex-1 overflow-x-auto scrollbar-none px-2 gap-0.5"
           >
             {leagues.map(league => (
               <button
@@ -465,6 +456,11 @@ export const EsportsSchedule: FC = () => {
               </button>
             ))}
           </div>
+          <a href={`https://lolesports.com/schedule?leagues=${currentLeague.name.toLowerCase()}`}
+            target="_blank" rel="noopener noreferrer"
+            className="text-xs text-lol-accent hover:underline shrink-0">
+            すべて見る →
+          </a>
         </div>
 
         {/* スクロール可能なリスト（7行分の高さ） */}
