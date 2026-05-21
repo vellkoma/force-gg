@@ -120,7 +120,7 @@ export const LiveMatchPanel: FC = () => {
   const hasLive = matches.some(m => m.status === 'running')
 
   return (
-    <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden w-full lg:w-64 shrink-0 flex flex-col">
+    <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden w-full lg:w-64 shrink-0 flex flex-col lg:h-full">
       {/* ヘッダー */}
       <div className="border-b border-lol-border bg-[#0a1020] px-3 py-2.5 flex items-center gap-2 shrink-0">
         {hasLive
