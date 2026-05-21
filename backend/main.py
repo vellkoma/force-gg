@@ -16,7 +16,7 @@ from app.core import database
 from app.core.config import settings
 from app.routers import auth, champion, coaching, esports, match, stripe, summoner
 from app.services import esports_db
-from app.services.esports_status import status_check_loop
+from app.services.esports_status import status_check_loop, live_refresh_loop
 
 logging.basicConfig(
     level=settings.log_level.upper(),
@@ -49,13 +49,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Esports DB 初期化 + 試合中ステータス監視タスク起動
     await esports_db.init_db()
-    status_task = asyncio.create_task(status_check_loop())
-    app.state.status_task = status_task
+    status_task  = asyncio.create_task(status_check_loop())
+    refresh_task = asyncio.create_task(live_refresh_loop())
+    app.state.status_task  = status_task
+    app.state.refresh_task = refresh_task
 
     yield  # アプリ実行中
 
     logger.info("バックエンドサーバーをシャットダウンしています...")
     status_task.cancel()
+    refresh_task.cancel()
     await cache.disconnect()
     await database.close()
     await esports_db.close_db()

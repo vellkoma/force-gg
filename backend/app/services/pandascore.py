@@ -129,6 +129,49 @@ async def fetch_schedule(league_name: str, our_league_id: int) -> list[dict]:
     return matches
 
 
+async def fetch_live_and_recent(league_name: str, our_league_id: int) -> list[dict]:
+    """
+    PandaScore から running（Live）と直近24時間に終了した試合を取得する。
+    1時間ごとのステータス更新用。失敗時は空リストを返す。
+    """
+    if not settings.pandascore_api_key:
+        return []
+
+    ps_league_id = await _get_ps_league_id(league_name)
+    if not ps_league_id:
+        return []
+
+    matches_raw: list[dict] = []
+    try:
+        async with httpx.AsyncClient(headers=_auth_headers(), timeout=20) as c:
+            # running（試合中）
+            r1 = await c.get(
+                f"{PANDASCORE_API}/lol/matches/running",
+                params={"filter[league_id]": ps_league_id, "per_page": "20"},
+            )
+            if r1.status_code == 200:
+                matches_raw.extend(r1.json())
+
+            # 直近終了した試合（past の先頭10件 = 最新終了分）
+            r2 = await c.get(
+                f"{PANDASCORE_API}/lol/matches/past",
+                params={
+                    "filter[league_id]": ps_league_id,
+                    "per_page": "10",
+                    "sort": "-end_at",
+                },
+            )
+            if r2.status_code == 200:
+                matches_raw.extend(r2.json())
+    except Exception as e:
+        logger.warning("PandaScore fetch_live_and_recent 失敗 (%s): %s", league_name, e)
+        return []
+
+    matches = [m for m in (_parse_match(raw, our_league_id) for raw in matches_raw) if m]
+    logger.info("PandaScore live/recent: %s — %d 件", league_name, len(matches))
+    return matches
+
+
 async def fetch_match_games(ps_match_id: int) -> list[dict]:
     """
     PandaScore からゲーム別プレイヤー統計を取得する。
