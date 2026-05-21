@@ -25,6 +25,12 @@ const TYPE_COLOR: Record<UpdateType, string> = {
 
 const UPDATES: UpdateEntry[] = [
   {
+    date: '2026-05-22',
+    type: 'ui',
+    title: 'TOP画面 LIVE/直近予定パネル追加・レイアウト改善',
+    description: 'プロシーンスケジュール右側にLIVE試合・直近予定を6件表示するパネルを追加。スケジュールヘッダーを1段化し、Live試合のステータス・スコアを1時間ごとに自動更新。',
+  },
+  {
     date: '2026-05-21',
     type: 'feat',
     title: 'Discord ログイン対応（Web）',

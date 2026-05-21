@@ -423,8 +423,8 @@ export const EsportsSchedule: FC = () => {
 
   return (
     <section className="max-w-6xl mx-auto px-4 pb-12">
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-      <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden flex-1 min-w-0">
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch">
+      <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden flex-1 min-w-0 flex flex-col">
         {/* ヘッダー（タブ + すべて見る 1段） */}
         <div className="border-b border-lol-border bg-[#0a1020] flex items-center pr-3">
           <div
@@ -463,11 +463,11 @@ export const EsportsSchedule: FC = () => {
           </a>
         </div>
 
-        {/* スクロール可能なリスト（7行分の高さ） */}
+        {/* スクロール可能なリスト */}
         <div
           ref={scrollRef}
-          className="overflow-y-auto scrollbar-thin scrollbar-thumb-lol-border scrollbar-track-transparent"
-          style={{ maxHeight: `${ROW_HEIGHT * 7}px` }}
+          className="overflow-y-auto scrollbar-thin scrollbar-thumb-lol-border scrollbar-track-transparent flex-1"
+          style={{ minHeight: `${ROW_HEIGHT * 4}px`, maxHeight: `${ROW_HEIGHT * 10}px` }}
         >
           {isLoading && [...Array(7)].map((_, i) => (
             <div key={i} className="border-b border-lol-border/30 animate-pulse bg-lol-card"
