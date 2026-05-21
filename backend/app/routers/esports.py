@@ -170,6 +170,52 @@ def _fmt_games(games: list[dict]) -> list[dict]:
     ]
 
 
+@router.get("/live", summary="LIVE + 直近予定試合（全リーグ横断・最大5件）")
+async def get_live_and_upcoming() -> JSONResponse:
+    """
+    全リーグの running（LIVE）試合と直近 not_started 試合を合わせて最大5件返す。
+    TOP画面のサイドパネル用。
+    """
+    pool = db._pool_or_raise()
+
+    live_rows = await pool.fetch(
+        "SELECT * FROM esports_matches WHERE status = 'running' ORDER BY begin_at ASC LIMIT 5"
+    )
+    remaining = 5 - len(live_rows)
+    upcoming_rows = []
+    if remaining > 0:
+        upcoming_rows = await pool.fetch(
+            "SELECT * FROM esports_matches WHERE status = 'not_started' "
+            "ORDER BY begin_at ASC LIMIT $1",
+            remaining,
+        )
+
+    result = []
+    icons = await db.get_league_icons()
+    for m in list(live_rows) + list(upcoming_rows):
+        league_id   = m["league_id"]
+        league_cfg  = LEAGUE_CONFIG.get(league_id, {})
+        league_name = league_cfg.get("name", "")
+        result.append({
+            "id":             m["id"],
+            "league_name":    league_name,
+            "league_icon":    icons.get(league_name, ""),
+            "begin_at":       m["begin_at"],
+            "status":         m["status"],
+            "team1_name":     m["team1_name"],
+            "team1_acronym":  m["team1_acronym"],
+            "team1_image":    m["team1_image_url"] or "",
+            "team1_score":    m["team1_score"] or 0,
+            "team2_name":     m["team2_name"],
+            "team2_acronym":  m["team2_acronym"],
+            "team2_image":    m["team2_image_url"] or "",
+            "team2_score":    m["team2_score"] or 0,
+            "number_of_games": m["number_of_games"],
+        })
+
+    return JSONResponse(result)
+
+
 @router.get("/leagues", summary="リーグ一覧とアイコンURL")
 async def get_leagues() -> JSONResponse:
     icons = await db.get_league_icons()

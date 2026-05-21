@@ -1,6 +1,7 @@
 import { type FC, useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocale } from '@/hooks/useLocale'
+import { LiveMatchPanel } from './LiveMatchPanel'
 
 const API_BASE = (import.meta.env.VITE_API_URL as string) ?? ''
 
@@ -422,7 +423,8 @@ export const EsportsSchedule: FC = () => {
 
   return (
     <section className="max-w-6xl mx-auto px-4 pb-12">
-      <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
+      <div className="bg-lol-card border border-lol-border rounded-2xl overflow-hidden flex-1 min-w-0">
         {/* ヘッダー */}
         <div className="border-b border-lol-border bg-[#0a1020]">
           {/* タイトル行 */}
@@ -522,6 +524,10 @@ export const EsportsSchedule: FC = () => {
           })}
         </div>
 
+      </div>
+
+      {/* LIVE / 直近予定パネル */}
+      <LiveMatchPanel />
       </div>
     </section>
   )
