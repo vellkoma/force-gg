@@ -25,6 +25,12 @@ const TYPE_COLOR: Record<UpdateType, string> = {
 
 const UPDATES: UpdateEntry[] = [
   {
+    date: '2026-05-21',
+    type: 'feat',
+    title: 'Discord ログイン対応（Web）',
+    description: 'WebサイトにDiscordソーシャルログインを追加。Google / Discordアカウントへのパスワード追加・パスワードリセット機能（メール送信）も実装。',
+  },
+  {
     date: '2026-05-14',
     type: 'infra',
     title: 'チャンピオン統計データ 本番反映（パッチ 16.2〜16.9）',
