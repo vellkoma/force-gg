@@ -10,6 +10,7 @@
   ビジネスロジック（JWT生成など）はどちらのモードでも共通。
 """
 import hashlib
+import logging
 import secrets
 import urllib.parse
 from datetime import datetime, timedelta, timezone
@@ -22,6 +23,8 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 from app.core import database
+
+logger = logging.getLogger(__name__)
 from app.models.user import UserRecord, UserResponse, TokenResponse
 
 # -------------------------------------------------------------------
@@ -426,7 +429,9 @@ def _generate_state(redirect_uri: str) -> str:
 
 def _validate_and_consume_state(state: str) -> str:
     """stateを検証して使用済みにする。不正なstateは 400 を raise。redirect_uriを返す。"""
+    logger.info("OAuth state check: state=%s known_states=%s", state[:8] + "...", list(_oauth_states.keys())[:5])
     if state not in _oauth_states:
+        logger.error("OAuth state mismatch: state=%s not in %d stored states", state, len(_oauth_states))
         raise HTTPException(400, "不正なstateパラメータです（CSRF対策）")
     return _oauth_states.pop(state)
 
@@ -576,7 +581,11 @@ async def _exchange_discord_code(code: str, redirect_uri: str) -> dict:
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
     if resp.status_code != 200:
-        raise HTTPException(502, "Discordトークン取得に失敗しました")
+        logger.error(
+            "Discord token exchange failed: status=%s body=%s redirect_uri=%s client_id=%s",
+            resp.status_code, resp.text, redirect_uri, settings.discord_client_id
+        )
+        raise HTTPException(502, f"Discordトークン取得に失敗しました (status={resp.status_code})")
     return resp.json()
 
 
