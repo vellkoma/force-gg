@@ -49,7 +49,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     isConnected: (): Promise<boolean> => ipcRenderer.invoke('lcu:isConnected'),
 
     /** ランク統計を取得する */
-    getRankedStats: () => ipcRenderer.invoke('lcu:getRankedStats')
+    getRankedStats: () => ipcRenderer.invoke('lcu:getRankedStats'),
+
+    /** マッチ承認画面の情報を取得する */
+    getReadyCheck: () => ipcRenderer.invoke('lcu:getReadyCheck'),
+
+    /** マッチを承認する */
+    acceptMatch: (): Promise<void> => ipcRenderer.invoke('lcu:acceptMatch'),
+
+    /** マッチを拒否する */
+    declineMatch: (): Promise<void> => ipcRenderer.invoke('lcu:declineMatch')
   },
 
   // ---------- オーバーレイ ----------
@@ -59,6 +68,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     /** オーバーレイウィンドウを非表示にする */
     hide: (): Promise<void> => ipcRenderer.invoke('overlay:hide')
+  },
+
+  // ---------- API プロキシ ----------
+  api: {
+    request: (opts: { path: string; method?: string; headers?: Record<string, string>; body?: string }) =>
+      ipcRenderer.invoke('api:request', opts),
   },
 
   // ---------- アプリ情報 ----------

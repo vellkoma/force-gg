@@ -176,6 +176,34 @@ export function registerIpcHandlers(): void {
     BrowserWindow.fromWebContents(event.sender)?.close()
   })
 
+  /** マッチ承認画面の情報を取得する */
+  ipcMain.handle('lcu:getReadyCheck', async () => {
+    try {
+      return await lcuClient.getReadyCheck()
+    } catch (err) {
+      console.error('[IPC] lcu:getReadyCheck エラー:', err)
+      return null
+    }
+  })
+
+  /** マッチを承認する */
+  ipcMain.handle('lcu:acceptMatch', async () => {
+    try {
+      await lcuClient.acceptMatch()
+    } catch (err) {
+      console.error('[IPC] lcu:acceptMatch エラー:', err)
+    }
+  })
+
+  /** マッチを拒否する */
+  ipcMain.handle('lcu:declineMatch', async () => {
+    try {
+      await lcuClient.declineMatch()
+    } catch (err) {
+      console.error('[IPC] lcu:declineMatch エラー:', err)
+    }
+  })
+
   // ---------- LCU 拡張 ----------
 
   /** ランク統計を取得する */
@@ -297,9 +325,47 @@ export function registerIpcHandlers(): void {
     })
   }
 
-  const API_BASE = process.env['VITE_API_BASE_URL'] ?? 'http://localhost:8000'
+  const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000'
 
   ipcMain.handle('auth:googleLogin', () => startOAuthFlow(API_BASE, 'google'))
 
   ipcMain.handle('auth:discordLogin', () => startOAuthFlow(API_BASE, 'discord'))
+
+  // ---------- API プロキシ（CORS 回避のためメインプロセス経由）----------
+
+  ipcMain.handle('api:request', async (
+    _,
+    { path, method = 'GET', headers = {}, body }: {
+      path: string
+      method?: string
+      headers?: Record<string, string>
+      body?: string
+    }
+  ) => {
+    const url = `${API_BASE}${path}`
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body,
+      })
+      const status = res.status
+      let data: unknown = null
+      let rawText = ''
+      try {
+        rawText = await res.text()
+        data = JSON.parse(rawText)
+      } catch { data = rawText || null }
+
+      if (!res.ok) {
+        console.error(`[IPC] api:request HTTP ${status} ${url}:`, rawText.slice(0, 200))
+        return { ok: false, status, data, error: rawText.slice(0, 200) }
+      }
+      return { ok: true, status, data }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(`[IPC] api:request エラー ${url}:`, msg)
+      return { ok: false, status: 0, data: null, error: `${url} → ${msg}` }
+    }
+  })
 }

@@ -79,6 +79,13 @@ export type GameflowPhase =
   | 'EndOfGame'
   | 'Reconnect'
 
+export interface LcuReadyCheck {
+  state: 'Invalid' | 'InProgress' | 'EveryoneReady' | 'StrangerWarning'
+  playerResponse: 'None' | 'Accepted' | 'Declined'
+  timer: number
+  dodgeWarning: 'None' | 'Warning' | 'Penalty'
+}
+
 export interface LcuRankedStats {
   queueMap: Record<string, LcuQueueStats>
 }

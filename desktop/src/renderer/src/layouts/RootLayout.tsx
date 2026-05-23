@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '../components/Sidebar'
 import { UpdateBanner } from '../components/UpdateBanner'
+import { ReadyCheckOverlay } from '../components/ReadyCheckOverlay'
 import { useUpdater } from '../hooks/useUpdater'
 import { useLcu } from '../context/LcuContext'
 import { useEffect } from 'react'
@@ -74,6 +75,9 @@ export function RootLayout(): JSX.Element {
           </main>
         </div>
       </div>
+
+      {/* マッチ承認オーバーレイ */}
+      <ReadyCheckOverlay />
     </div>
   )
 }

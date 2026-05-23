@@ -9,7 +9,8 @@ import type {
   ChampSelectSession,
   LcuSummoner,
   GameflowPhase,
-  LcuRankedStats
+  LcuRankedStats,
+  LcuReadyCheck
 } from '../types/lcu'
 
 export interface FavoriteChampion {
@@ -40,7 +41,23 @@ export interface GoogleLoginError {
   error: string
 }
 
+export interface ApiResponse<T = unknown> {
+  ok: boolean
+  status: number
+  data: T
+  error?: string
+}
+
 export interface ElectronAPI {
+  api: {
+    request: <T = unknown>(opts: {
+      path: string
+      method?: string
+      headers?: Record<string, string>
+      body?: string
+    }) => Promise<ApiResponse<T>>
+  }
+
   auth: {
     googleLogin: () => Promise<GoogleLoginResult | GoogleLoginError>
     discordLogin: () => Promise<GoogleLoginResult | GoogleLoginError>
@@ -54,6 +71,9 @@ export interface ElectronAPI {
     getGameflowPhase: () => Promise<GameflowPhase | null>
     isConnected: () => Promise<boolean>
     getRankedStats: () => Promise<LcuRankedStats | null>
+    getReadyCheck: () => Promise<LcuReadyCheck | null>
+    acceptMatch: () => Promise<void>
+    declineMatch: () => Promise<void>
   }
 
   overlay: {

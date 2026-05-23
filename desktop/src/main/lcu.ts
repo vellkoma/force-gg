@@ -14,7 +14,8 @@ import type {
   ChampSelectSession,
   LcuSummoner,
   GameflowPhase,
-  LcuRankedStats
+  LcuRankedStats,
+  LcuReadyCheck
 } from '../types/lcu'
 
 // 自己署名証明書を許可するHTTPSエージェント（localhostのみ）
@@ -246,6 +247,31 @@ export class LcuClient {
     } catch {
       return null
     }
+  }
+
+  /**
+   * マッチ承認画面の情報を取得する
+   */
+  async getReadyCheck(): Promise<LcuReadyCheck | null> {
+    try {
+      return await this.get<LcuReadyCheck>('/lol-matchmaking/v1/ready-check')
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * マッチを承認する
+   */
+  async acceptMatch(): Promise<void> {
+    await this.post('/lol-matchmaking/v1/ready-check/accept')
+  }
+
+  /**
+   * マッチを拒否する
+   */
+  async declineMatch(): Promise<void> {
+    await this.post('/lol-matchmaking/v1/ready-check/decline')
   }
 
   /**

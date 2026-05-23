@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
-import type { ChampSelectSession, LcuSummoner, GameflowPhase } from '../../../types/lcu'
+import type { ChampSelectSession, LcuSummoner, GameflowPhase, LcuReadyCheck } from '../../../types/lcu'
 
 interface LcuState {
   isConnected: boolean
@@ -7,6 +7,7 @@ interface LcuState {
   summoner: LcuSummoner | null
   champSelect: ChampSelectSession | null
   gameflowPhase: GameflowPhase | null
+  readyCheck: LcuReadyCheck | null
   connect: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -20,6 +21,7 @@ export function LcuProvider({ children }: { children: ReactNode }): JSX.Element 
   const [summoner, setSummoner] = useState<LcuSummoner | null>(null)
   const [champSelect, setChampSelect] = useState<ChampSelectSession | null>(null)
   const [gameflowPhase, setGameflowPhase] = useState<GameflowPhase | null>(null)
+  const [readyCheck, setReadyCheck] = useState<LcuReadyCheck | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchInitialData = useCallback(async () => {
@@ -69,11 +71,17 @@ export function LcuProvider({ children }: { children: ReactNode }): JSX.Element 
         if (phase === 'ChampSelect') {
           const session = await window.electronAPI.lcu.getChampSelect()
           setChampSelect(session)
+          setReadyCheck(null)
+        } else if (phase === 'ReadyCheck') {
+          const rc = await window.electronAPI.lcu.getReadyCheck()
+          setReadyCheck(rc)
+          setChampSelect(null)
         } else {
           setChampSelect(null)
+          setReadyCheck(null)
         }
       } catch { /* メインプロセスからプッシュ通知で処理 */ }
-    }, 3000)
+    }, 1500)
   }, [isConnected])
 
   const stopPolling = useCallback(() => {
@@ -94,12 +102,14 @@ export function LcuProvider({ children }: { children: ReactNode }): JSX.Element 
         setSummoner(null)
         setChampSelect(null)
         setGameflowPhase(null)
+        setReadyCheck(null)
         stopPolling()
       }
     })
     window.electronAPI.on('lcu:phaseChanged', (phase: unknown) => {
       setGameflowPhase(phase as GameflowPhase)
       if (phase !== 'ChampSelect') setChampSelect(null)
+      if (phase !== 'ReadyCheck') setReadyCheck(null)
     })
     window.electronAPI.on('lcu:champSelectUpdate', (session: unknown) => {
       setChampSelect(session as ChampSelectSession)
@@ -130,7 +140,7 @@ export function LcuProvider({ children }: { children: ReactNode }): JSX.Element 
 
   return (
     <LcuContext.Provider
-      value={{ isConnected, isConnecting, summoner, champSelect, gameflowPhase, connect, refresh }}
+      value={{ isConnected, isConnecting, summoner, champSelect, gameflowPhase, readyCheck, connect, refresh }}
     >
       {children}
     </LcuContext.Provider>

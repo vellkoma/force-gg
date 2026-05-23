@@ -80,7 +80,17 @@ class RiotClient:
                         detail="Riot APIキーが設定されていません",
                     )
 
-                resp.raise_for_status()
+                if resp.status_code >= 400:
+                    logger.error(
+                        "Riot API エラー %d [%d/%d] URL=%s body=%s",
+                        resp.status_code, attempt, MAX_RETRIES, url,
+                        resp.text[:200],
+                    )
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"Riot API エラー {resp.status_code}: {resp.text[:200]}",
+                    )
+
                 return resp.json()
 
             except HTTPException:

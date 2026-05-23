@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 export interface MatchInfo {
   match_id: string
@@ -82,11 +81,17 @@ export function formatTimeAgo(timestampMs: number): string {
   return `${Math.floor(diffD / 30)}ヶ月前`
 }
 
-async function fetchWithAuth(path: string): Promise<Response> {
+async function apiFetch<T>(path: string): Promise<T> {
   const token = await window.electronAPI.settings.get('auth_access_token')
-  return fetch(`${API_BASE}${path}`, {
+  const res = await window.electronAPI.api.request<T>({
+    path,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
+  if (!res.ok) {
+    const detail = typeof res.error === 'string' ? res.error : JSON.stringify(res.data)
+    throw new Error(`HTTP ${res.status} [${path}]${detail ? `\n${detail.slice(0, 150)}` : ''}`)
+  }
+  return res.data
 }
 
 export function useMatchHistory(puuid: string | null, queue?: number) {
@@ -101,13 +106,12 @@ export function useMatchHistory(puuid: string | null, queue?: number) {
     try {
       const params = new URLSearchParams({ count: '20' })
       if (queue) params.set('queue', String(queue))
-      const res = await fetchWithAuth(`/api/matches/${puuid}?${params}`)
-      if (!res.ok) throw new Error(`${res.status}`)
-      const data = (await res.json()) as MatchListResponse
+      const data = await apiFetch<MatchListResponse>(`/api/matches/${puuid}?${params}`)
       setMatches(data.matches ?? [])
     } catch (e) {
-      setError('マッチ履歴の取得に失敗しました')
-      console.error(e)
+      const msg = e instanceof Error ? e.message : String(e)
+      setError(msg)
+      console.error('[useMatchHistory]', e)
     } finally {
       setLoading(false)
     }
