@@ -65,6 +65,10 @@ export interface LcuSummoner {
   accountId: number
   xpSinceLastLevel: number
   xpUntilNextLevel: number
+  /** Riot ID タグライン（例: JP1）— LCU v2以降で返される */
+  tagLine?: string
+  /** Riot ID ゲーム名（displayName と同じ場合が多い） */
+  gameName?: string
 }
 
 export type GameflowPhase =

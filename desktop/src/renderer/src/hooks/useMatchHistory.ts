@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import type { LcuSummoner } from '../../../types/lcu'
 
 
 export interface MatchInfo {
@@ -94,16 +95,47 @@ async function apiFetch<T>(path: string): Promise<T> {
   return res.data
 }
 
-export function useMatchHistory(puuid: string | null, queue?: number) {
+interface SummonerProfile {
+  puuid: string
+}
+
+/** LCU summoner → Riot API PUUID を解決するキャッシュ */
+const puuidCache = new Map<string, string>()
+
+async function resolveRiotPuuid(summoner: LcuSummoner): Promise<string> {
+  const cacheKey = summoner.displayName
+  if (puuidCache.has(cacheKey)) return puuidCache.get(cacheKey)!
+
+  // tagLine が LCU から取れた場合はそのまま使う
+  const tag = summoner.tagLine ?? 'JP1'
+  const name = summoner.gameName ?? summoner.displayName
+
+  const res = await window.electronAPI.api.request<SummonerProfile>({
+    path: `/api/summoner/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
+  })
+  if (!res.ok || !res.data?.puuid) {
+    throw new Error(`サモナー情報の取得に失敗しました (${res.status})`)
+  }
+  puuidCache.set(cacheKey, res.data.puuid)
+  return res.data.puuid
+}
+
+export function useMatchHistory(summoner: LcuSummoner | null, queue?: number) {
   const [matches, setMatches] = useState<MatchDetail[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const resolvedPuuid = useRef<string | null>(null)
 
   const load = useCallback(async () => {
-    if (!puuid) return
+    if (!summoner) return
     setLoading(true)
     setError(null)
     try {
+      // LCU puuid は暗号化済みのため summoner API 経由で Riot PUUID を取得
+      if (!resolvedPuuid.current) {
+        resolvedPuuid.current = await resolveRiotPuuid(summoner)
+      }
+      const puuid = resolvedPuuid.current
       const params = new URLSearchParams({ count: '20' })
       if (queue) params.set('queue', String(queue))
       const data = await apiFetch<MatchListResponse>(`/api/matches/${puuid}?${params}`)
@@ -115,7 +147,12 @@ export function useMatchHistory(puuid: string | null, queue?: number) {
     } finally {
       setLoading(false)
     }
-  }, [puuid, queue])
+  }, [summoner, queue])
+
+  // summoner が変わったらキャッシュをリセット
+  useEffect(() => {
+    resolvedPuuid.current = null
+  }, [summoner?.displayName])
 
   useEffect(() => {
     load()

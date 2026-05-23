@@ -122,7 +122,7 @@ export function MatchHistoryPage(): JSX.Element {
   const { isConnected, summoner } = useLcu()
   const [selectedQueue, setSelectedQueue] = useState<number | undefined>(undefined)
   const { matches, loading, error, reload } = useMatchHistory(
-    summoner?.puuid ?? null,
+    summoner ?? null,
     selectedQueue
   )
 

@@ -103,7 +103,7 @@ export function DesktopHomePage(): JSX.Element {
   const [favorites, setFavorites] = useState<FavoriteChampion[]>([])
   const championMap = useChampionMap()
   const { matches, loading: matchLoading, error: matchError, reload: reloadMatches } = useMatchHistory(
-    isConnected && summoner ? summoner.puuid : null
+    isConnected ? summoner : null
   )
 
   useEffect(() => {
