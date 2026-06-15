@@ -186,6 +186,7 @@ async def get_live_and_upcoming() -> JSONResponse:
     if remaining > 0:
         upcoming_rows = await pool.fetch(
             "SELECT * FROM esports_matches WHERE status = 'not_started' "
+            "AND begin_at > NOW() - INTERVAL '30 minutes' "  # 過去30分以内を起点として過去日付を除外
             "ORDER BY begin_at ASC LIMIT $1",
             remaining,
         )
@@ -231,16 +232,53 @@ async def get_leagues() -> JSONResponse:
     return JSONResponse(leagues)
 
 
-@router.post("/admin/update", summary="日次データ更新トリガー（GitHub Actions から呼び出す）")
+import sys as _sys
+
+
+def _spawn(args: list[str]) -> int:
+    """update.py を別プロセスとして起動し PID を返す（ノンブロッキング）。"""
+    import subprocess
+    proc = subprocess.Popen(
+        [_sys.executable] + args,
+        cwd=".",
+    )
+    return proc.pid
+
+
+@router.post("/admin/update", summary="esports スケジュール更新（別プロセス）")
 async def trigger_update(x_update_secret: str = Header(...)) -> JSONResponse:
+    """esports スケジュールのみ更新する（チャンピオン統計は含まない）。"""
     if x_update_secret != settings.update_secret:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    async def _run() -> None:
-        import sys, os
-        sys.path.insert(0, ".")
-        from update import main as update_main
-        await update_main()
+    pid = _spawn(["update.py", "--skip-champion-stats"])
+    logger.info("esports スケジュール更新プロセス起動 PID=%d", pid)
+    return JSONResponse({"status": "started", "pid": pid, "mode": "schedule_only"})
 
-    asyncio.create_task(_run())
-    return JSONResponse({"status": "started"})
+
+@router.post("/admin/update/stats", summary="チャンピオン統計更新（別プロセス）")
+async def trigger_update_stats(
+    x_update_secret: str = Header(...),
+    rank: str = "CHALLENGER",
+) -> JSONResponse:
+    """チャンピオン統計のみ更新する（スケジュール取得は含まない）。"""
+    if x_update_secret != settings.update_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    pid = _spawn(["update.py", "--champion-stats-only", "--rank", rank])
+    logger.info("チャンピオン統計更新プロセス起動 PID=%d rank=%s", pid, rank)
+    return JSONResponse({"status": "started", "pid": pid, "mode": "stats_only", "rank": rank})
+
+
+@router.post("/admin/update/all", summary="全更新（スケジュール + 統計、別プロセス）")
+async def trigger_update_all(
+    x_update_secret: str = Header(...),
+    rank: str = "CHALLENGER",
+) -> JSONResponse:
+    """スケジュールとチャンピオン統計を両方更新する。"""
+    if x_update_secret != settings.update_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    pid = _spawn(["update.py", "--rank", rank])
+    logger.info("全更新プロセス起動 PID=%d rank=%s", pid, rank)
+    return JSONResponse({"status": "started", "pid": pid, "mode": "all", "rank": rank})

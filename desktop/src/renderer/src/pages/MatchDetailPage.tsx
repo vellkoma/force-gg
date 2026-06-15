@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { dd } from '../utils/ddragon'
 import {
   formatDuration,
@@ -61,6 +61,21 @@ function DamageBar({
   )
 }
 
+function SpellIcon({ id }: { id: number }) {
+  const url = dd.spellIconById(id)
+  if (!url) return <div className="w-4 h-4 bg-[#0a0e1a] rounded border border-[#1e2a3a]" />
+  return (
+    <img
+      src={url}
+      alt={`spell ${id}`}
+      className="w-4 h-4 rounded object-cover"
+      onError={(e) => {
+        ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+      }}
+    />
+  )
+}
+
 function PlayerRow({
   p,
   maxDamage,
@@ -75,6 +90,7 @@ function PlayerRow({
     p.deaths === 0
       ? `${(p.kills + p.assists)}:1`
       : ((p.kills + p.assists) / p.deaths).toFixed(2)
+  const posLabel = POSITION_LABELS[p.individual_position]
 
   return (
     <tr className={`border-t border-[#1e2a3a] ${isMe ? 'bg-[#c89b3c]/5' : ''}`}>
@@ -91,14 +107,19 @@ function PlayerRow({
               {p.champ_level}
             </span>
           </div>
+          {/* スペルアイコン */}
+          <div className="flex flex-col gap-0.5">
+            <SpellIcon id={p.summoner1_id} />
+            <SpellIcon id={p.summoner2_id} />
+          </div>
           <div>
             <p className="text-xs font-medium text-gray-200 truncate max-w-[80px]">
               {p.riot_id_game_name || p.champion_name}
               {isMe && <span className="ml-1 text-[#c89b3c]">★</span>}
             </p>
-            <p className="text-[10px] text-gray-500">
-              {POSITION_LABELS[p.individual_position] ?? '?'}
-            </p>
+            {posLabel && (
+              <p className="text-[10px] text-gray-500">{posLabel}</p>
+            )}
           </div>
         </div>
       </td>
@@ -180,7 +201,6 @@ function TeamTable({
 }
 
 export function MatchDetailPage(): JSX.Element {
-  const navigate = useNavigate()
   const { matchId } = useParams<{ matchId: string }>()
   const location = useLocation()
   const state = location.state as { match: MatchDetail; myPuuid: string } | null
@@ -188,9 +208,6 @@ export function MatchDetailPage(): JSX.Element {
   if (!state?.match) {
     return (
       <div className="p-6 max-w-5xl mx-auto">
-        <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white mb-4">
-          ← 戻る
-        </button>
         <p className="text-gray-400">マッチデータが見つかりません。（ID: {matchId}）</p>
       </div>
     )
@@ -204,9 +221,6 @@ export function MatchDetailPage(): JSX.Element {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-5">
-        <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white transition-colors">
-          ←
-        </button>
         <div>
           <h1 className="text-lg font-bold text-[#c89b3c]">マッチ詳細</h1>
           <p className="text-xs text-gray-400">

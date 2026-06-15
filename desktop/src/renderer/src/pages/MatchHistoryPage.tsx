@@ -9,15 +9,19 @@ import {
   type MatchDetail,
   type ParticipantStats,
 } from '../hooks/useMatchHistory'
+import { useChampionMap } from '../hooks/useChampionMap'
 import { dd } from '../utils/ddragon'
 
+// ARAM フィルター: 450（ARAM）+ 2400（メイヘム）をまとめて表示
+const ARAM_QUEUE_IDS = new Set([450, 900, 1010, 1900, 2400])
+
 const QUEUE_FILTERS = [
-  { label: 'すべて', value: undefined },
-  { label: 'ランク', value: 420 },
-  { label: 'フレックス', value: 440 },
-  { label: 'ARAM', value: 450 },
-  { label: 'ノーマル', value: 400 },
-] as const
+  { label: 'すべて', apiQueue: undefined as number | undefined, displayQueues: undefined as Set<number> | undefined },
+  { label: 'ランク', apiQueue: 420, displayQueues: undefined },
+  { label: 'フレックス', apiQueue: 440, displayQueues: undefined },
+  { label: 'ARAM', apiQueue: undefined, displayQueues: ARAM_QUEUE_IDS },
+  { label: 'ノーマル', apiQueue: 400, displayQueues: undefined },
+]
 
 function ItemIcon({ id }: { id: number }) {
   const url = dd.itemIcon(id)
@@ -120,11 +124,20 @@ function MatchCard({
 
 export function MatchHistoryPage(): JSX.Element {
   const { isConnected, summoner } = useLcu()
-  const [selectedQueue, setSelectedQueue] = useState<number | undefined>(undefined)
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const selectedFilter = QUEUE_FILTERS[selectedIndex]
+  const championMap = useChampionMap()
+
   const { matches, loading, error, reload } = useMatchHistory(
     summoner ?? null,
-    selectedQueue
+    selectedFilter.apiQueue,
+    championMap
   )
+
+  // ARAM フィルターはクライアント側でメイヘムも含めて絞り込む
+  const displayMatches = selectedFilter.displayQueues
+    ? matches.filter((m) => selectedFilter.displayQueues!.has(m.info.queue_id))
+    : matches
 
   if (!isConnected || !summoner) {
     return (
@@ -155,12 +168,12 @@ export function MatchHistoryPage(): JSX.Element {
 
       {/* フィルター */}
       <div className="flex gap-2 mb-5 flex-wrap">
-        {QUEUE_FILTERS.map((f) => (
+        {QUEUE_FILTERS.map((f, i) => (
           <button
-            key={String(f.value)}
-            onClick={() => setSelectedQueue(f.value)}
+            key={f.label}
+            onClick={() => setSelectedIndex(i)}
             className={`px-3 py-1.5 rounded text-sm transition-colors ${
-              selectedQueue === f.value
+              selectedIndex === i
                 ? 'bg-[#c89b3c] text-black font-semibold'
                 : 'bg-[#0f1923] border border-[#1e2a3a] text-gray-400 hover:text-white hover:border-[#c89b3c]/50'
             }`}
@@ -183,15 +196,15 @@ export function MatchHistoryPage(): JSX.Element {
         </div>
       )}
 
-      {!loading && !error && matches.length === 0 && (
+      {!loading && !error && displayMatches.length === 0 && (
         <div className="bg-[#0f1923] rounded-lg border border-[#1e2a3a] p-8 text-center text-gray-400 text-sm">
           マッチ履歴が見つかりませんでした。
         </div>
       )}
 
-      {!loading && matches.length > 0 && (
+      {!loading && displayMatches.length > 0 && (
         <div className="space-y-2">
-          {matches.map((match) => (
+          {displayMatches.map((match) => (
             <MatchCard key={match.info.match_id} match={match} myPuuid={summoner.puuid} />
           ))}
         </div>

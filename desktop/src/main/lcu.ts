@@ -275,6 +275,145 @@ export class LcuClient {
   }
 
   /**
+   * LCU内部マッチ履歴から直近の試合をフル participant データで取得する
+   */
+  async getLcuMatchHistory(puuid: string, count = 30): Promise<LcuMatchGame[]> {
+    try {
+      const res = await this.get<{
+        games: { games: LcuMatchGame[] }
+      }>(
+        `/lol-match-history/v1/products/lol/${puuid}/matches?begIndex=0&endIndex=${count - 1}`
+      )
+      return res?.games?.games ?? []
+    } catch {
+      return []
+    }
+  }
+
+  /** 個別試合の全参加者データを取得する（match list は自プレイヤーのみのため） */
+  async getLcuMatchDetail(gameId: number): Promise<LcuMatchGame | null> {
+    try {
+      return await this.get<LcuMatchGame>(`/lol-match-history/v1/games/${gameId}`)
+    } catch {
+      return null
+    }
+  }
+
+  /** 名誉プロフィールを取得する */
+  async getHonorProfile(): Promise<{ honorLevel: number; checkpoint: number } | null> {
+    try {
+      return await this.get<{ honorLevel: number; checkpoint: number }>('/lol-honor-v2/v1/profile')
+    } catch {
+      return null
+    }
+  }
+
+  /** 名誉レベルアイコンを LCU またはCommunityDragon CDNから取得して base64 データ URL で返す */
+  async getHonorIconDataUrl(level: number): Promise<string | null> {
+    // LCU ゲームデータ上で試す候補パス
+    const lcuCandidates = this.credentials ? [
+      `/lol-game-data/assets/v1/honor-icon/${level}`,
+      `/lol-honor-v2/v1/honor-icon/${level}`,
+      `/lol-game-data/assets/ASSETS/Loadouts/HonorEmblems/Emblem_Level_${level}_Shadow.png`,
+      `/lol-game-data/assets/ASSETS/Loadouts/HonorEmblems/HonorEmblems_Medallion_Level${level}.png`,
+      `/lol-game-data/assets/ASSETS/Loadouts/HonorEmblems/Emblem_Level_${level}.png`,
+    ] : []
+
+    for (const path of lcuCandidates) {
+      try {
+        const dataUrl = await new Promise<string | null>((resolve) => {
+          const options: https.RequestOptions = {
+            hostname: '127.0.0.1',
+            port: this.credentials!.port,
+            path,
+            method: 'GET',
+            headers: { Authorization: this.authHeader, Accept: 'image/png,image/*' },
+            agent: lcuAgent,
+            timeout: 3000,
+          }
+          const r = https.request(options, (res) => {
+            if (!res.statusCode || res.statusCode >= 400) {
+              res.resume()
+              resolve(null)
+              return
+            }
+            const chunks: Buffer[] = []
+            res.on('data', (c: Buffer) => chunks.push(c))
+            res.on('end', () => {
+              const b64 = Buffer.concat(chunks).toString('base64')
+              resolve(`data:image/png;base64,${b64}`)
+            })
+          })
+          r.on('error', () => resolve(null))
+          r.on('timeout', () => { r.destroy(); resolve(null) })
+          r.end()
+        })
+        if (dataUrl) {
+          console.log(`[LCU] honor icon found via LCU: ${path}`)
+          return dataUrl
+        }
+      } catch { /* 次を試す */ }
+    }
+
+    // CommunityDragon CDN からフォールバック取得（メインプロセスなので CORS 制約なし）
+    const cdnCandidates = [
+      `https://raw.communitydragon.org/latest/game/assets/loadouts/honoremblems/emblem_level_${level}_shadow.png`,
+      `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-honor-v2/global/default/honor-${level}.png`,
+      `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-honor-v2/global/default/honor-level-${level}.png`,
+    ]
+
+    for (const url of cdnCandidates) {
+      try {
+        const res = await fetch(url)
+        if (res.ok) {
+          const buf = await res.arrayBuffer()
+          const b64 = Buffer.from(buf).toString('base64')
+          const mime = res.headers.get('content-type') ?? 'image/png'
+          console.log(`[LCU] honor icon found via CDN: ${url}`)
+          return `data:${mime};base64,${b64}`
+        }
+      } catch { /* 次を試す */ }
+    }
+
+    console.log(`[LCU] honor icon not found for level ${level}`)
+    return null
+  }
+
+  /** チャンピオンマスタリー全リストを取得する */
+  async getMasteryList(): Promise<Array<{
+    championId: number
+    championPoints: number
+    championLevel: number
+    lastPlayTime: number
+  }> | null> {
+    try {
+      return await this.get('/lol-champion-mastery/v1/local-player/champion-mastery')
+    } catch {
+      return null
+    }
+  }
+
+  /** チャンピオンマスタリー情報（合計スコア + トップ3）を取得する */
+  async getMasteryScore(_summonerId: number, _puuid: string): Promise<{
+    totalScore: number
+    top3: Array<{ championId: number; championPoints: number }>
+  } | null> {
+    try {
+      const list = await this.get<Array<{ championId: number; championPoints: number }>>(
+        '/lol-champion-mastery/v1/local-player/champion-mastery'
+      )
+      if (!Array.isArray(list) || list.length === 0) return null
+      const sorted = [...list].sort((a, b) => b.championPoints - a.championPoints)
+      return {
+        totalScore: list.reduce((sum, m) => sum + (m.championPoints ?? 0), 0),
+        top3: sorted.slice(0, 3).map((m) => ({ championId: m.championId, championPoints: m.championPoints })),
+      }
+    } catch {
+      return null
+    }
+  }
+
+  /**
    * 接続を切断してクレデンシャルをクリアする
    */
   disconnect(): void {
@@ -286,3 +425,59 @@ export class LcuClient {
 
 // シングルトンインスタンス
 export const lcuClient = new LcuClient()
+
+// ---------- LCU マッチ履歴の型定義 ----------
+
+export interface LcuMatchParticipantStats {
+  win: boolean
+  kills: number
+  deaths: number
+  assists: number
+  item0: number
+  item1: number
+  item2: number
+  item3: number
+  item4: number
+  item5: number
+  item6: number
+  totalDamageDealtToChampions: number
+  goldEarned: number
+  totalMinionsKilled: number
+  neutralMinionsKilled: number
+  visionScore: number
+  champLevel: number
+  playerAugment1?: number
+  playerAugment2?: number
+  playerAugment3?: number
+  playerAugment4?: number
+}
+
+export interface LcuMatchParticipant {
+  participantId: number
+  teamId: number
+  championId: number
+  spell1Id: number
+  spell2Id: number
+  stats: LcuMatchParticipantStats
+}
+
+export interface LcuMatchParticipantIdentity {
+  participantId: number
+  player: {
+    puuid: string
+    gameName: string
+    tagLine: string
+    summonerName: string
+  }
+}
+
+export interface LcuMatchGame {
+  gameId: number
+  gameCreation: number
+  gameDuration: number
+  gameMode: string
+  queueId: number
+  participants: LcuMatchParticipant[]
+  participantIdentities: LcuMatchParticipantIdentity[]
+  teams: Array<{ teamId: number; win: string }>
+}

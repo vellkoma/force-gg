@@ -46,6 +46,11 @@ export interface ChampSelectSession {
   isSpectating: boolean
   benchEnabled: boolean
   benchChampions: Array<{ championId: number; isPriority: boolean }>
+  bans?: {
+    myTeamBans: number[]
+    theirTeamBans: number[]
+    numBans: number
+  }
   chatDetails: {
     chatRoomName: string
     chatRoomPassword: string

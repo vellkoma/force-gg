@@ -64,6 +64,25 @@ async def get_match_history(
 
 
 @router.get(
+    "/by-ids/{puuid}",
+    response_model=MatchListResponse,
+    summary="指定マッチIDの試合詳細取得",
+    description=(
+        "カンマ区切りのマッチIDリストから試合詳細を一括取得します。"
+        "Riot API が未対応のキュー（queue 2400 等）は 404 となりスキップされます。"
+        "最大50件まで受け付けます。"
+    ),
+)
+async def get_matches_by_ids(
+    puuid: Annotated[str, Path(description="プレイヤーのPUUID")],
+    ids: Annotated[str, Query(description="カンマ区切りのマッチID一覧（最大50件）")],
+    service: Annotated[MatchService, Depends(get_match_service)],
+) -> MatchListResponse:
+    match_ids = [mid.strip() for mid in ids.split(",") if mid.strip()][:50]
+    return await service.get_matches_by_ids(puuid, match_ids)
+
+
+@router.get(
     "/{match_id}/timeline",
     response_model=MatchTimeline,
     summary="マッチタイムライン取得",

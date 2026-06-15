@@ -216,6 +216,113 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  /** LCU内部マッチ履歴からqueueIdを取得する */
+  ipcMain.handle('lcu:getMatchHistory', async (_, puuid: string) => {
+    try {
+      return await lcuClient.getLcuMatchHistory(puuid, 30)
+    } catch (err) {
+      console.error('[IPC] lcu:getMatchHistory エラー:', err)
+      return []
+    }
+  })
+
+  /** チャンピオンマスタリー全リストを取得する */
+  ipcMain.handle('lcu:getMasteryList', async () => {
+    try {
+      return await lcuClient.getMasteryList()
+    } catch (err) {
+      console.error('[IPC] lcu:getMasteryList エラー:', err)
+      return null
+    }
+  })
+
+  /** 名誉レベルアイコンを base64 データ URL で取得する */
+  ipcMain.handle('lcu:getHonorIconDataUrl', async (_, level: number) => {
+    try {
+      return await lcuClient.getHonorIconDataUrl(level)
+    } catch (err) {
+      console.error('[IPC] lcu:getHonorIconDataUrl エラー:', err)
+      return null
+    }
+  })
+
+  /** 名誉プロフィールを取得する */
+  ipcMain.handle('lcu:getHonorProfile', async () => {
+    try {
+      return await lcuClient.getHonorProfile()
+    } catch (err) {
+      console.error('[IPC] lcu:getHonorProfile エラー:', err)
+      return null
+    }
+  })
+
+  /** チャンピオンマスタリースコアを取得する */
+  ipcMain.handle('lcu:getMasteryScore', async (_, summonerId: number, puuid: string) => {
+    try {
+      return await lcuClient.getMasteryScore(summonerId, puuid)
+    } catch (err) {
+      console.error('[IPC] lcu:getMasteryScore エラー:', err)
+      return null
+    }
+  })
+
+  /** LCU個別試合の全参加者データを取得する */
+  ipcMain.handle('lcu:getMatchDetail', async (_, gameId: number) => {
+    try {
+      return await lcuClient.getLcuMatchDetail(gameId)
+    } catch (err) {
+      console.error('[IPC] lcu:getMatchDetail エラー:', err)
+      return null
+    }
+  })
+
+  /** オーグメント一覧を LCU から取得して CDragon アイコン URL に変換する */
+  ipcMain.handle('lcu:fetchAugments', async () => {
+    // LCUパスをCDragonのURLに変換する
+    // 例: /lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/x_small.png
+    //  → https://raw.communitydragon.org/latest/game/assets/ux/cherry/augments/icons/x_small.png
+    function lcuPathToCDragon(lcuPath: string): string {
+      const withoutPrefix = lcuPath.replace(/^\/lol-game-data\/assets\//i, '')
+      return `https://raw.communitydragon.org/latest/game/${withoutPrefix.toLowerCase()}`
+    }
+
+    // LCUから取得（正しいゲーム内IDを持つ）
+    try {
+      type LcuAugment = {
+        id: number
+        augmentSmallIconPath?: string
+        nameId?: string
+        augmentNameId?: string
+        nameTRA?: string
+        descriptionTRA?: string
+        augmentDescriptionTRA?: string
+        tooltipTRA?: string
+      }
+      const data = await lcuClient.get<LcuAugment[]>('/lol-game-data/assets/v1/cherry-augments.json')
+      if (Array.isArray(data)) {
+        return data.map((a) => ({
+          id: a.id,
+          iconSmall: a.augmentSmallIconPath ? lcuPathToCDragon(a.augmentSmallIconPath) : undefined,
+          nameId: a.augmentNameId ?? a.nameId,
+          name: a.nameTRA,
+          description: a.descriptionTRA ?? a.augmentDescriptionTRA ?? a.tooltipTRA,
+        }))
+      }
+    } catch (e) {
+      console.warn('[fetchAugments] LCU取得失敗、CDragonにフォールバック:', e)
+    }
+
+    // LCU未接続時はCDragonから取得（旧形式・IDが異なるが一応返す）
+    try {
+      const r = await fetch('https://raw.communitydragon.org/latest/cdragon/arena/en_us.json')
+      if (!r.ok) return []
+      const data = await r.json()
+      return Array.isArray(data) ? data : (data as { augments?: unknown[] }).augments ?? []
+    } catch {
+      return []
+    }
+  })
+
   // ---------- アプリ拡張 ----------
 
   /** Windows スタートアップ登録/解除 */
@@ -358,7 +465,11 @@ export function registerIpcHandlers(): void {
       } catch { data = rawText || null }
 
       if (!res.ok) {
-        console.error(`[IPC] api:request HTTP ${status} ${url}:`, rawText.slice(0, 200))
+        if (status === 404) {
+          console.debug(`[IPC] api:request 404 ${url}`)
+        } else {
+          console.error(`[IPC] api:request HTTP ${status} ${url}:`, rawText.slice(0, 200))
+        }
         return { ok: false, status, data, error: rawText.slice(0, 200) }
       }
       return { ok: true, status, data }

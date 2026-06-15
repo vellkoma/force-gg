@@ -37,6 +37,10 @@ class ParticipantStats(BaseModel):
     participant_id: int = 0    # Riot内部ID (1〜10)
     riot_id_game_name: str = ""
     riot_id_tag_line: str = ""
+    player_augment1: int = 0   # アリーナ用オーグメントID（Riot Match v5）
+    player_augment2: int = 0
+    player_augment3: int = 0
+    player_augment4: int = 0
 
     @property
     def kda(self) -> float:

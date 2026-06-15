@@ -6,6 +6,7 @@ Riot Match v5 API を呼び出してマッチ履歴を構築する
 import asyncio
 import logging
 
+from fastapi import HTTPException
 from app.cache.redis import CacheClient
 from app.core.config import settings
 from app.models.match import (
@@ -61,6 +62,10 @@ class MatchService:
             item4=raw["item4"],
             item5=raw["item5"],
             item6=raw["item6"],
+            player_augment1=raw.get("playerAugment1", 0),
+            player_augment2=raw.get("playerAugment2", 0),
+            player_augment3=raw.get("playerAugment3", 0),
+            player_augment4=raw.get("playerAugment4", 0),
             individual_position=raw.get("individualPosition", ""),
             champ_level=raw.get("champLevel", 1),
             team_id=raw.get("teamId", 100),
@@ -180,6 +185,34 @@ class MatchService:
         results = await asyncio.gather(*tasks, return_exceptions=True)
         matches: list[MatchDetail] = [r for r in results if isinstance(r, MatchDetail)]
 
+        return MatchListResponse(matches=matches, puuid=puuid)
+
+    async def _get_match_detail_safe(self, match_id: str, puuid: str) -> MatchDetail | None:
+        """
+        1試合分の詳細を取得する（エラー時は None を返す）
+        Riot API が未対応のキュー（queue 2400 等）は 404 になるためスキップする
+        """
+        try:
+            return await self._get_match_detail_cached(match_id, puuid)
+        except HTTPException as e:
+            if e.status_code == 404:
+                logger.debug("マッチ詳細が見つかりません（Riot API未対応）: %s", match_id)
+                return None
+            raise
+        except Exception as e:
+            logger.warning("マッチ詳細取得エラー（スキップ）: %s %s", match_id, str(e))
+            return None
+
+    async def get_matches_by_ids(self, puuid: str, match_ids: list[str]) -> MatchListResponse:
+        """
+        指定したマッチIDリストの試合詳細を一括取得する
+
+        LCU API から取得したマッチIDを Riot API で一括照会するために使用する。
+        Riot API が未対応のキュー（queue 2400 等）は 404 になりスキップされる。
+        """
+        tasks = [self._get_match_detail_safe(mid, puuid) for mid in match_ids]
+        results = await asyncio.gather(*tasks)
+        matches = [r for r in results if r is not None]
         return MatchListResponse(matches=matches, puuid=puuid)
 
     async def get_match_timeline(self, match_id: str, puuid: str) -> MatchTimeline:

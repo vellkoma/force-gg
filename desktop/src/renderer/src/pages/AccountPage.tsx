@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 type Tab = 'login' | 'register'
 
 export function AccountPage(): JSX.Element {
-  const navigate = useNavigate()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [username, setUsername] = useState<string | null>(null)
   const [avatar, setAvatar] = useState<string | null>(null)
@@ -228,12 +226,6 @@ export function AccountPage(): JSX.Element {
   return (
     <div className="p-6 max-w-md mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-gray-400 hover:text-white transition-colors"
-        >
-          ←
-        </button>
         <h1 className="text-lg font-semibold text-[#c89b3c]">アカウント連携</h1>
       </div>
 

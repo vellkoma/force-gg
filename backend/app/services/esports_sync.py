@@ -64,7 +64,8 @@ def _parse_match(row: dict, league_id: int) -> dict | None:
     elif now - dt < timedelta(hours=4):
         status = "running"
     else:
-        status = "not_started"
+        # winner 未設定でも開始から4時間超 → 終了扱い（過去試合が not_started のまま残らないように）
+        status = "finished"
 
     t1_score = _safe_int(row.get("Team1Score")) if winner else 0
     t2_score = _safe_int(row.get("Team2Score")) if winner else 0

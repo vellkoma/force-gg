@@ -179,10 +179,27 @@ async def update_team_logos() -> None:
 _ALL_RANKS = ["CHALLENGER","GRANDMASTER","MASTER","DIAMOND","EMERALD","PLATINUM","GOLD","SILVER","BRONZE","IRON"]
 
 
+async def cleanup_stale_matches() -> None:
+    """開始から6時間以上経過しているのに not_started / running のままの試合を finished に修正する。"""
+    pool = db._pool_or_raise()
+    result = await pool.execute(
+        "UPDATE esports_matches SET status = 'finished' "
+        "WHERE status IN ('not_started', 'running') "
+        "AND begin_at < NOW() - INTERVAL '6 hours'"
+    )
+    count = int(result.split()[-1]) if result else 0
+    if count:
+        logger.info("  stale 試合クリーンアップ: %d 件を finished に更新", count)
+
+
 async def main(skip_schedule: bool = False, skip_champion_stats: bool = False, rank_group: str = "CHALLENGER", patch: str | None = None, rank_all: bool = False) -> None:
     logger.info("=== force.gg 日次更新 開始 ===")
 
     await db.init_db()
+
+    # 過去の stale データをまず修正
+    logger.info("--- stale データクリーンアップ ---")
+    await cleanup_stale_matches()
 
     total = 0
 

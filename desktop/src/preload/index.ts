@@ -58,7 +58,36 @@ contextBridge.exposeInMainWorld('electronAPI', {
     acceptMatch: (): Promise<void> => ipcRenderer.invoke('lcu:acceptMatch'),
 
     /** マッチを拒否する */
-    declineMatch: (): Promise<void> => ipcRenderer.invoke('lcu:declineMatch')
+    declineMatch: (): Promise<void> => ipcRenderer.invoke('lcu:declineMatch'),
+
+    /** チャンピオンマスタリー全リストを取得する */
+    getMasteryList: (): Promise<Array<{ championId: number; championPoints: number; championLevel: number; lastPlayTime: number }> | null> =>
+      ipcRenderer.invoke('lcu:getMasteryList'),
+
+    /** 名誉レベルアイコンを base64 データ URL で取得する */
+    getHonorIconDataUrl: (level: number): Promise<string | null> =>
+      ipcRenderer.invoke('lcu:getHonorIconDataUrl', level),
+
+    /** 名誉プロフィールを取得する */
+    getHonorProfile: (): Promise<{ honorLevel: number; checkpoint: number } | null> =>
+      ipcRenderer.invoke('lcu:getHonorProfile'),
+
+    /** チャンピオンマスタリースコアを取得する */
+    getMasteryScore: (summonerId: number, puuid: string): Promise<{ totalScore: number; top3: Array<{ championId: number; championPoints: number }> } | null> =>
+      ipcRenderer.invoke('lcu:getMasteryScore', summonerId, puuid),
+
+    /** LCU内部マッチ履歴をフル参加者データで取得する */
+    getMatchHistory: (puuid: string): Promise<import('../main/lcu').LcuMatchGame[]> =>
+      ipcRenderer.invoke('lcu:getMatchHistory', puuid),
+
+    /** LCU個別試合の全参加者データを取得する */
+    getMatchDetail: (gameId: number): Promise<import('../main/lcu').LcuMatchGame | null> =>
+      ipcRenderer.invoke('lcu:getMatchDetail', gameId),
+
+    /** オーグメントデータをLCU/CDragonから取得（CORS回避） */
+    fetchAugments: (): Promise<Array<{ id: number; iconSmall?: string; nameId?: string; name?: string; description?: string }>> =>
+      ipcRenderer.invoke('lcu:fetchAugments'),
+
   },
 
   // ---------- オーバーレイ ----------

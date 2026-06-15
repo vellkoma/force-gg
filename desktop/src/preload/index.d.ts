@@ -31,6 +31,54 @@ export interface DownloadProgress {
   total: number
 }
 
+export interface LcuMatchGame {
+  gameId: number
+  gameCreation: number
+  gameDuration: number
+  gameMode: string
+  queueId: number
+  participants: Array<{
+    participantId: number
+    teamId: number
+    championId: number
+    spell1Id: number
+    spell2Id: number
+    stats: {
+      win: boolean
+      kills: number
+      deaths: number
+      assists: number
+      item0: number
+      item1: number
+      item2: number
+      item3: number
+      item4: number
+      item5: number
+      item6: number
+      totalDamageDealtToChampions: number
+      goldEarned: number
+      totalMinionsKilled: number
+      neutralMinionsKilled: number
+      visionScore: number
+      champLevel: number
+      playerAugment1?: number
+      playerAugment2?: number
+      playerAugment3?: number
+      playerAugment4?: number
+    }
+  }>
+  participantIdentities: Array<{
+    participantId: number
+    player: {
+      puuid: string
+      gameName: string
+      tagLine: string
+      summonerName: string
+    }
+  }>
+  teams: Array<{ teamId: number; win: string }>
+}
+
 export interface GoogleLoginResult {
   token: string
   refresh_token?: string
@@ -74,6 +122,13 @@ export interface ElectronAPI {
     getReadyCheck: () => Promise<LcuReadyCheck | null>
     acceptMatch: () => Promise<void>
     declineMatch: () => Promise<void>
+    getMasteryList: () => Promise<Array<{ championId: number; championPoints: number; championLevel: number; lastPlayTime: number }> | null>
+    getHonorIconDataUrl: (level: number) => Promise<string | null>
+    getHonorProfile: () => Promise<{ honorLevel: number; checkpoint: number } | null>
+    getMasteryScore: (summonerId: number, puuid: string) => Promise<{ totalScore: number; top3: Array<{ championId: number; championPoints: number }> } | null>
+    getMatchHistory: (puuid: string) => Promise<LcuMatchGame[]>
+    getMatchDetail: (gameId: number) => Promise<LcuMatchGame | null>
+    fetchAugments: () => Promise<Array<{ id: number; iconSmall?: string; nameId?: string; name?: string; description?: string }>>
   }
 
   overlay: {
