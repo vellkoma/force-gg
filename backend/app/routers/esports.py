@@ -176,22 +176,26 @@ async def get_live_and_upcoming() -> JSONResponse:
     全リーグの running（LIVE）試合と直近 not_started 試合を合わせて最大5件返す。
     TOP画面のサイドパネル用。
     """
-    pool = db._pool_or_raise()
+    from datetime import datetime, timedelta, timezone
 
-    # status が running のまま放置された過去試合を除外（開始から6時間以内のみ LIVE 扱い）
+    pool = db._pool_or_raise()
+    now  = datetime.now(timezone.utc)
+    # begin_at は text カラムのため ISO 文字列で辞書順比較する（NOW() との直接比較は不可）
+    live_cutoff     = (now - timedelta(hours=6)).isoformat()    # 6時間超の running は LIVE 扱いしない
+    upcoming_cutoff = (now - timedelta(minutes=30)).isoformat()  # 過去日付の not_started を除外
+
     live_rows = await pool.fetch(
         "SELECT * FROM esports_matches WHERE status = 'running' "
-        "AND begin_at > NOW() - INTERVAL '6 hours' "
-        "ORDER BY begin_at ASC LIMIT 6"
+        "AND begin_at > $1 ORDER BY begin_at ASC LIMIT 6",
+        live_cutoff,
     )
     remaining = 6 - len(live_rows)
     upcoming_rows = []
     if remaining > 0:
         upcoming_rows = await pool.fetch(
             "SELECT * FROM esports_matches WHERE status = 'not_started' "
-            "AND begin_at > NOW() - INTERVAL '30 minutes' "  # 過去30分以内を起点として過去日付を除外
-            "ORDER BY begin_at ASC LIMIT $1",
-            remaining,
+            "AND begin_at > $1 ORDER BY begin_at ASC LIMIT $2",
+            upcoming_cutoff, remaining,
         )
 
     result = []

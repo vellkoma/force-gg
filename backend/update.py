@@ -181,11 +181,15 @@ _ALL_RANKS = ["CHALLENGER","GRANDMASTER","MASTER","DIAMOND","EMERALD","PLATINUM"
 
 async def cleanup_stale_matches() -> None:
     """開始から6時間以上経過しているのに not_started / running のままの試合を finished に修正する。"""
+    from datetime import datetime, timedelta, timezone
+
     pool = db._pool_or_raise()
+    # begin_at は text カラムのため ISO 文字列で辞書順比較する（NOW() との直接比較は不可）
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
     result = await pool.execute(
         "UPDATE esports_matches SET status = 'finished' "
-        "WHERE status IN ('not_started', 'running') "
-        "AND begin_at < NOW() - INTERVAL '6 hours'"
+        "WHERE status IN ('not_started', 'running') AND begin_at < $1",
+        cutoff,
     )
     count = int(result.split()[-1]) if result else 0
     if count:

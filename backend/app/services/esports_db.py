@@ -331,7 +331,10 @@ async def get_matches(league_id: int, limit: int = 15) -> list[dict[str, Any]]:
     初期スクロール位置を「直近の予定試合」に合わせるための並び順。
     """
     pool = _pool_or_raise()
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=365)).isoformat()
+    now    = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(days=365)).isoformat()
+    # begin_at は text カラムのため ISO 文字列で辞書順比較する（NOW() との直接比較は不可）
+    stale_cutoff = (now - timedelta(hours=6)).isoformat()
 
     # 完了: 直近10件を古い順で返す（時系列表示用）、1年以内のみ
     # status が running/not_started のまま放置された過去試合も完了扱いで含める
@@ -339,11 +342,10 @@ async def get_matches(league_id: int, limit: int = 15) -> list[dict[str, Any]]:
         """
         SELECT * FROM esports_matches
         WHERE league_id = $1 AND begin_at >= $2
-          AND (status IN ('finished','canceled')
-               OR begin_at < NOW() - INTERVAL '6 hours')
+          AND (status IN ('finished','canceled') OR begin_at < $3)
         ORDER BY begin_at DESC LIMIT 10
         """,
-        league_id, cutoff,
+        league_id, cutoff, stale_cutoff,
     )
     finished = [{**dict(r), "status": "finished" if r["status"] in ("running", "not_started") else r["status"]}
                 for r in reversed(finished_rows)]
@@ -353,10 +355,10 @@ async def get_matches(league_id: int, limit: int = 15) -> list[dict[str, Any]]:
         """
         SELECT * FROM esports_matches
         WHERE league_id = $1 AND status IN ('running','not_started')
-          AND begin_at > NOW() - INTERVAL '6 hours'
+          AND begin_at > $2
         ORDER BY begin_at ASC LIMIT 5
         """,
-        league_id,
+        league_id, stale_cutoff,
     )
     upcoming = [dict(r) for r in upcoming_rows]
 
