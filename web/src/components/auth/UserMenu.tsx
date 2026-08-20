@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type FC } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { PREMIUM_SIGNUP_ENABLED } from '@/config/features'
 
 /**
  * ヘッダー右上のユーザーメニュー
@@ -104,7 +105,8 @@ const UserMenu: FC = () => {
               プロフィール
             </Link>
 
-            {!user.isPremium && (
+            {/* 新規受付休止中はアップグレード導線を出さない */}
+            {!user.isPremium && PREMIUM_SIGNUP_ENABLED && (
               <Link
                 to="/premium"
                 onClick={() => setIsOpen(false)}

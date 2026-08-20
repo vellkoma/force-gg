@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     stripe_monthly_price_id: str = ""
     stripe_yearly_price_id: str = ""
 
+    # プレミアム新規登録の受付可否（休止中は false）
+    # 既存契約の閲覧・管理・解約は false でも引き続き利用可能。
+    # 再開する場合は環境変数 PREMIUM_SIGNUP_ENABLED=true を設定する。
+    premium_signup_enabled: bool = False
+
     # Anthropic (Claude API) — AI コーチング機能用
     # 未設定の場合はモックレスポンスを返す（開発環境でもサービスは起動可能）
     anthropic_api_key: str = ""

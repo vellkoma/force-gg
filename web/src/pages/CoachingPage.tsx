@@ -5,6 +5,7 @@ import { useCoachingMutation } from '@/hooks/useCoaching'
 import { CoachingPanel } from '@/components/coaching/CoachingPanel'
 import { AdBanner } from '@/components/ads/AdBanner'
 import { useAuth } from '@/contexts/AuthContext'
+import { PREMIUM_SIGNUP_ENABLED } from '@/config/features'
 
 // --- 定数 ---
 
@@ -101,21 +102,33 @@ const CoachingPage: FC = () => {
               AI コーチングはプレミアム機能です
             </p>
             <p className="text-lol-text-sub text-sm">
-              月額 ¥980 でフルアクセス — Claude AI によるパーソナライズドアドバイスを利用できます。
+              {PREMIUM_SIGNUP_ENABLED
+                ? '月額 ¥980 でフルアクセス — Claude AI によるパーソナライズドアドバイスを利用できます。'
+                : 'Claude AI によるパーソナライズドアドバイスを利用できる機能です。'}
             </p>
           </div>
 
-          <Link
-            to="/premium"
-            className="inline-block px-6 py-2.5 bg-lol-gold text-[#070B14] font-display font-bold rounded-lg
-                       hover:brightness-110 transition-all tracking-wider text-sm"
-          >
-            プレミアムにアップグレード
-          </Link>
+          {PREMIUM_SIGNUP_ENABLED ? (
+            <>
+              <Link
+                to="/premium"
+                className="inline-block px-6 py-2.5 bg-lol-gold text-[#070B14] font-display font-bold rounded-lg
+                           hover:brightness-110 transition-all tracking-wider text-sm"
+              >
+                プレミアムにアップグレード
+              </Link>
 
-          <p className="text-xs text-lol-text-sub">
-            7日間無料トライアル付き
-          </p>
+              <p className="text-xs text-lol-text-sub">
+                7日間無料トライアル付き
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-lol-text-sub leading-relaxed">
+              現在、プレミアムプランの新規受付を休止しています。
+              <br />
+              受付を再開しましたら、あらためてお知らせいたします。
+            </p>
+          )}
         </div>
       </main>
     )

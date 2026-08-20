@@ -68,7 +68,12 @@ async def create_checkout(
     """
     Stripe チェックアウトセッションを作成してリダイレクト URL を返す。
     7 日間の無料トライアル付き。
+
+    PREMIUM_SIGNUP_ENABLED=false の間は新規登録を受け付けない。
     """
+    if not settings.premium_signup_enabled:
+        raise HTTPException(503, "プレミアムプランの新規登録は現在休止中です")
+
     price_id = PRICE_IDS.get(body.plan)
     if not price_id:
         raise HTTPException(400, "無効なプラン名です")

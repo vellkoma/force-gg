@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { PremiumBadge } from '@/components/ui/PremiumBadge'
 import { useAuth } from '@/contexts/AuthContext'
 import { createCheckoutSession, getSubscription, getBillingPortalUrl } from '@/api/stripe'
+import { PREMIUM_SIGNUP_ENABLED } from '@/config/features'
 
 // -------------------------------------------------------------------
 // 機能比較テーブルデータ
@@ -107,6 +108,9 @@ const PremiumPage: FC = () => {
   const isSubscribed =
     subscription?.status === 'active' || subscription?.status === 'trialing'
 
+  // 新規登録の受付可否（休止中は既存契約者の管理のみ可能）
+  const canSignUp = PREMIUM_SIGNUP_ENABLED || isSubscribed
+
   // チェックアウトセッション作成
   const checkout = useMutation({
     mutationFn: () => createCheckoutSession(selectedPlan),
@@ -167,8 +171,22 @@ const PremiumPage: FC = () => {
           )}
         </div>
 
+        {/* 新規登録 休止中のお知らせ */}
+        {!canSignUp && (
+          <div className="mb-8 rounded-xl bg-lol-card2 border border-lol-border p-5 text-center">
+            <p className="text-lol-text font-display font-bold text-base">
+              現在、プレミアムプランの新規受付を休止しています
+            </p>
+            <p className="text-lol-text-sub text-sm mt-2 leading-relaxed">
+              サービス品質の向上のため、新規のお申し込みを一時的に停止しております。
+              <br />
+              受付を再開しましたら、あらためてこのページでお知らせいたします。
+            </p>
+          </div>
+        )}
+
         {/* 7日間無料トライアルバナー */}
-        {!isSubscribed && (
+        {!isSubscribed && canSignUp && (
           <div className="mb-8 rounded-xl bg-lol-accent/10 border border-lol-accent/30 p-4 text-center">
             <p className="text-lol-accent font-bold text-sm">
               7日間無料トライアル付き — クレジットカードなしでは開始できません
@@ -180,7 +198,7 @@ const PremiumPage: FC = () => {
         )}
 
         {/* 料金カード */}
-        {!isSubscribed && (
+        {!isSubscribed && canSignUp && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             <PricingCard
               title="月額プラン"
@@ -240,37 +258,45 @@ const PremiumPage: FC = () => {
 
         {/* CTA */}
         <div className="text-center">
-          {checkout.isError && (
-            <p className="mb-3 text-sm text-red-400">
-              エラーが発生しました。もう一度お試しください。
+          {!canSignUp ? (
+            <p className="text-sm text-lol-text-sub">
+              受付再開までしばらくお待ちください。無料機能は引き続きご利用いただけます。
             </p>
-          )}
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={handleCTA}
-            disabled={isLoading}
-            className="w-full max-w-xs"
-          >
-            {isLoading ? '処理中...' : ctaLabel()}
-          </Button>
+          ) : (
+            <>
+              {checkout.isError && (
+                <p className="mb-3 text-sm text-red-400">
+                  エラーが発生しました。もう一度お試しください。
+                </p>
+              )}
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleCTA}
+                disabled={isLoading}
+                className="w-full max-w-xs"
+              >
+                {isLoading ? '処理中...' : ctaLabel()}
+              </Button>
 
-          {!isAuthenticated && (
-            <p className="mt-3 text-xs text-lol-text-sub">
-              アカウントを作成して7日間無料でお試しください
-            </p>
-          )}
+              {!isAuthenticated && (
+                <p className="mt-3 text-xs text-lol-text-sub">
+                  アカウントを作成して7日間無料でお試しください
+                </p>
+              )}
 
-          {isSubscribed && (
-            <p className="mt-3 text-xs text-lol-text-sub">
-              ポータルからプラン変更・解約ができます
-            </p>
-          )}
+              {isSubscribed && (
+                <p className="mt-3 text-xs text-lol-text-sub">
+                  ポータルからプラン変更・解約ができます
+                </p>
+              )}
 
-          {!isSubscribed && isAuthenticated && (
-            <p className="mt-3 text-xs text-lol-text-sub">
-              Stripe の安全な決済画面に移動します
-            </p>
+              {!isSubscribed && isAuthenticated && (
+                <p className="mt-3 text-xs text-lol-text-sub">
+                  Stripe の安全な決済画面に移動します
+                </p>
+              )}
+            </>
           )}
         </div>
 
