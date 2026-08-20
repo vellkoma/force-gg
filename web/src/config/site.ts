@@ -7,7 +7,7 @@
 
 export const SITE_NAME = 'force.gg'
 
-export const SITE_URL = 'https://forcegg.io'
+export const SITE_URL = 'https://www.forcegg.io'
 
 /** 運営者表記 */
 export const OPERATOR_NAME = 'vellkoma'

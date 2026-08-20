@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://forcegg.io/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://forcegg.io/champions</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://forcegg.io/meta</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://forcegg.io/summoner</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://forcegg.io/coaching</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://forcegg.io/download</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://forcegg.io/premium</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://forcegg.io/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://forcegg.io/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://forcegg.io/contact</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://www.forcegg.io/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://www.forcegg.io/champions</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.forcegg.io/meta</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.forcegg.io/summoner</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.forcegg.io/coaching</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.forcegg.io/download</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.forcegg.io/premium</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://www.forcegg.io/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://www.forcegg.io/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://www.forcegg.io/contact</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

@@ -11,4 +11,4 @@ Disallow: /profile
 Disallow: /premium/success
 Disallow: /premium/cancel
 
-Sitemap: https://forcegg.io/sitemap.xml
+Sitemap: https://www.forcegg.io/sitemap.xml
