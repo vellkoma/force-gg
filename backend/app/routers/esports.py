@@ -178,8 +178,11 @@ async def get_live_and_upcoming() -> JSONResponse:
     """
     pool = db._pool_or_raise()
 
+    # status が running のまま放置された過去試合を除外（開始から6時間以内のみ LIVE 扱い）
     live_rows = await pool.fetch(
-        "SELECT * FROM esports_matches WHERE status = 'running' ORDER BY begin_at ASC LIMIT 6"
+        "SELECT * FROM esports_matches WHERE status = 'running' "
+        "AND begin_at > NOW() - INTERVAL '6 hours' "
+        "ORDER BY begin_at ASC LIMIT 6"
     )
     remaining = 6 - len(live_rows)
     upcoming_rows = []
