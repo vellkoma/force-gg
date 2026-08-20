@@ -33,16 +33,6 @@ const HomePage: FC = () => {
       {/* 開発中アップデートパネル（公開時に削除予定） */}
       <UpdatePanel />
 
-      {/* フッター */}
-      <footer className="border-t border-lol-border mt-4 py-8">
-        <div className="max-w-6xl mx-auto px-4 text-center text-xs text-lol-text-sub space-y-1">
-          <p>force.gg は Riot Games が公認したサービスではありません。</p>
-          <p>
-            force.gg isn't endorsed by Riot Games and doesn't reflect the views or opinions of
-            Riot Games or anyone officially involved in producing or managing Riot Games properties.
-          </p>
-        </div>
-      </footer>
     </div>
   )
 }

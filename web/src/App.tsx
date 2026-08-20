@@ -4,6 +4,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import UserMenu from '@/components/auth/UserMenu'
 import { BottomStickyAd } from '@/components/ads/BottomStickyAd'
+import { Footer } from '@/components/ui/Footer'
 
 // ページの遅延ロード（コード分割）
 const HomePage          = lazy(() => import('@/pages/HomePage'))
@@ -22,6 +23,9 @@ const PremiumCancelPage    = lazy(() => import('@/pages/PremiumCancelPage'))
 const CoachingPage         = lazy(() => import('@/pages/CoachingPage'))
 const DownloadPage         = lazy(() => import('@/pages/DownloadPage'))
 const ProfilePage          = lazy(() => import('@/pages/ProfilePage'))
+const PrivacyPolicyPage    = lazy(() => import('@/pages/PrivacyPolicyPage'))
+const TermsPage            = lazy(() => import('@/pages/TermsPage'))
+const ContactPage          = lazy(() => import('@/pages/ContactPage'))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -91,6 +95,8 @@ function RootLayout() {
         </div>
       </Suspense>
 
+      <Footer />
+
       <BottomStickyAd />
     </div>
   )
@@ -139,6 +145,9 @@ const router = createBrowserRouter([
       { path: '/coaching',                      element: <CoachingPage /> },
       { path: '/download',                      element: <DownloadPage /> },
       { path: '/profile',                       element: <ProfilePage /> },
+      { path: '/privacy',                       element: <PrivacyPolicyPage /> },
+      { path: '/terms',                         element: <TermsPage /> },
+      { path: '/contact',                       element: <ContactPage /> },
     ],
   },
 ])

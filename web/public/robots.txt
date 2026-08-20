@@ -1,4 +1,14 @@
-# 開発中のため検索エンジンのクロールを拒否
-# 本番公開時は Allow: / に戻す
 User-agent: *
-Disallow: /
+Allow: /
+
+# 認証・決済まわりはインデックス不要
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /oauth/
+Disallow: /profile
+Disallow: /premium/success
+Disallow: /premium/cancel
+
+Sitemap: https://forcegg.io/sitemap.xml

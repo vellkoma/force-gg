@@ -171,12 +171,6 @@ const SummonerPage: FC = () => {
         )}
       </div>
 
-      {/* フッター */}
-      <footer className="border-t border-lol-border mt-20 py-8">
-        <div className="max-w-4xl mx-auto px-4 text-center text-xs text-lol-text-sub space-y-1">
-          <p>force.gg は Riot Games が公認したサービスではありません。</p>
-        </div>
-      </footer>
     </div>
   )
 }

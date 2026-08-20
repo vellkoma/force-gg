@@ -308,13 +308,6 @@ const PremiumPage: FC = () => {
         )}
       </div>
 
-      {/* フッター */}
-      <footer className="border-t border-lol-border mt-20 py-8">
-        <div className="max-w-6xl mx-auto px-4 text-center text-xs text-lol-text-sub">
-          <p>force.gg は Riot Games が公認したサービスではありません。</p>
-          <p className="mt-1">決済は Stripe を通じて安全に処理されます。</p>
-        </div>
-      </footer>
     </div>
   )
 }
