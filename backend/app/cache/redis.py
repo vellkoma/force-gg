@@ -43,6 +43,19 @@ class InMemoryCache:
         async with self._lock:
             self._store.pop(key, None)
 
+    async def incr(self, key: str, ttl: int) -> int:
+        """カウンタを1増やして現在値を返す。初回のみ TTL を設定する。"""
+        async with self._lock:
+            entry = self._store.get(key)
+            now = time.time()
+            if entry is None or (entry[1] > 0 and now > entry[1]):
+                self._store[key] = ("1", now + ttl)
+                return 1
+            value, expire_at = entry
+            count = int(value) + 1
+            self._store[key] = (str(count), expire_at)
+            return count
+
     async def ping(self) -> bool:
         return True
 
@@ -114,6 +127,23 @@ class CacheClient:
                 await self._fallback.delete(key)
         except RedisError as e:
             logger.warning("キャッシュ削除エラー [%s]: %s", key, str(e))
+
+    async def incr(self, key: str, ttl: int) -> int:
+        """
+        カウンタを原子的に1増やして現在値を返す。キーが新規なら TTL を設定する。
+        レート制限のカウントに使う。障害時は 0 を返し、制限を素通しさせる
+        （キャッシュ障害でログインが不能になる方が被害が大きいため）。
+        """
+        try:
+            if self._use_redis and self._redis is not None:
+                count = await self._redis.incr(key)
+                if count == 1:
+                    await self._redis.expire(key, ttl)
+                return int(count)
+            return await self._fallback.incr(key, ttl)
+        except RedisError as e:
+            logger.warning("カウンタ増分エラー [%s]: %s", key, str(e))
+            return 0
 
     async def delete_pattern(self, pattern: str) -> int:
         """パターンにマッチする全キーを削除する（Redis専用、フォールバック時は0を返す）"""

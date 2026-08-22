@@ -7,8 +7,11 @@
 """
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, Query, Request
 
+from app.cache.redis import CacheClient
+from app.core import rate_limit
+from app.deps import get_cache
 from app.models.user import (
     ForgotPasswordRequest,
     OAuthCallbackRequest,
@@ -30,11 +33,22 @@ router = APIRouter(tags=["auth"])
 # -------------------------------------------------------------------
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
-async def register(body: UserCreate) -> TokenResponse:
+async def register(
+    body: UserCreate,
+    request: Request,
+    cache: Annotated[CacheClient, Depends(get_cache)],
+) -> TokenResponse:
     """
     メールアドレス + パスワードで新規ユーザー登録。
     登録直後にJWTトークンを返す（ログインと同等）。
+
+    同一 IP からの大量登録を防ぐため 1時間あたり 10 件に制限する。
     """
+    await rate_limit.enforce(
+        cache, "register", rate_limit.client_ip(request),
+        limit=10, window_seconds=3600,
+    )
+
     user = await auth_service.create_user(
         email=body.email,
         password=body.password,
@@ -48,12 +62,32 @@ async def register(body: UserCreate) -> TokenResponse:
 
 
 @router.post("/login/email", response_model=TokenResponse)
-async def login_email(body: UserLogin) -> TokenResponse:
+async def login_email(
+    body: UserLogin,
+    request: Request,
+    cache: Annotated[CacheClient, Depends(get_cache)],
+) -> TokenResponse:
     """
     メールアドレス + パスワードでログイン。
     認証失敗時は 401 を返す。
+
+    ブルートフォース対策として IP とメールアドレスの両方で試行回数を制限する。
+    IP 単位だけだと分散攻撃を防げず、メール単位だけだと総当たりで
+    複数アカウントを狙われるため、両方を見る。
+    ログイン成功時はカウンタをリセットし、正規利用者を締め出さない。
     """
+    ip    = rate_limit.client_ip(request)
+    email = body.email.lower()
+
+    await rate_limit.enforce(cache, "login:ip",    ip,    limit=20, window_seconds=900)
+    await rate_limit.enforce(cache, "login:email", email, limit=10, window_seconds=900)
+
     user = await auth_service.authenticate_user(body.email, body.password)
+
+    # 認証成功 — 失敗カウンタを消して次回以降に持ち越さない
+    await rate_limit.reset(cache, "login:ip", ip)
+    await rate_limit.reset(cache, "login:email", email)
+
     return TokenResponse(
         token=auth_service.create_jwt_token(user.id, user.email),
         refresh_token=auth_service.create_refresh_token(user.id),
@@ -172,18 +206,47 @@ async def set_password(
 
 
 @router.post("/forgot-password", status_code=200)
-async def forgot_password(body: ForgotPasswordRequest) -> dict:
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    request: Request,
+    cache: Annotated[CacheClient, Depends(get_cache)],
+) -> dict:
     """
     パスワードリセットメールを送信する。
     メールアドレスの存在有無に関わらず同じレスポンスを返す（メール列挙攻撃対策）。
+
+    メール送信の踏み台にされないよう、IP とメールアドレスの両方で制限する。
     """
+    await rate_limit.enforce(
+        cache, "forgot:ip", rate_limit.client_ip(request),
+        limit=5, window_seconds=3600,
+    )
+    await rate_limit.enforce(
+        cache, "forgot:email", body.email.lower(),
+        limit=3, window_seconds=3600,
+    )
+
     await auth_service.request_password_reset(body.email)
     return {"message": "ご登録のメールアドレスにリセット用のリンクをお送りしました。"}
 
 
 @router.post("/reset-password", status_code=200)
-async def reset_password(body: ResetPasswordRequest) -> dict:
-    """トークンを使ってパスワードをリセットする"""
+async def reset_password(
+    body: ResetPasswordRequest,
+    request: Request,
+    cache: Annotated[CacheClient, Depends(get_cache)],
+) -> dict:
+    """
+    トークンを使ってパスワードをリセットする。
+
+    トークンは 32 バイトのランダム値で総当たりは現実的でないが、
+    無効なトークンでの試行を繰り返せる状態は避ける。
+    """
+    await rate_limit.enforce(
+        cache, "reset:ip", rate_limit.client_ip(request),
+        limit=10, window_seconds=900,
+    )
+
     await auth_service.reset_password(body.token, body.new_password)
     return {"message": "パスワードを変更しました。新しいパスワードでログインしてください。"}
 

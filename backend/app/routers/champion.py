@@ -11,6 +11,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, UploadFile, File
 
+from app.core.admin_auth import verify_update_secret
 from app.core.config import settings
 from app.deps import get_cache, get_champion_service
 from app.models.build import BuildRecommendation
@@ -194,8 +195,7 @@ async def clear_champion_cache(
     x_update_secret: str = Header(...),
     cache=Depends(get_cache),
 ) -> dict:
-    if not settings.update_secret or x_update_secret != settings.update_secret:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    verify_update_secret(x_update_secret)
     prefixes = [
         "champion_stats_all:",
         "champion_stats_single:",

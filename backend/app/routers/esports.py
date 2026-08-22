@@ -7,6 +7,7 @@ import logging
 from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
 
+from app.core.admin_auth import verify_update_secret
 from app.core.config import settings
 from app.services import esports_db as db
 from app.services.esports_sync import LEAGUE_CONFIG
@@ -255,8 +256,7 @@ def _spawn(args: list[str]) -> int:
 @router.post("/admin/update", summary="esports スケジュール更新（別プロセス）")
 async def trigger_update(x_update_secret: str = Header(...)) -> JSONResponse:
     """esports スケジュールのみ更新する（チャンピオン統計は含まない）。"""
-    if x_update_secret != settings.update_secret:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    verify_update_secret(x_update_secret)
 
     pid = _spawn(["update.py", "--skip-champion-stats"])
     logger.info("esports スケジュール更新プロセス起動 PID=%d", pid)
@@ -269,8 +269,7 @@ async def trigger_update_stats(
     rank: str = "CHALLENGER",
 ) -> JSONResponse:
     """チャンピオン統計のみ更新する（スケジュール取得は含まない）。"""
-    if x_update_secret != settings.update_secret:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    verify_update_secret(x_update_secret)
 
     pid = _spawn(["update.py", "--champion-stats-only", "--rank", rank])
     logger.info("チャンピオン統計更新プロセス起動 PID=%d rank=%s", pid, rank)
@@ -283,8 +282,7 @@ async def trigger_update_all(
     rank: str = "CHALLENGER",
 ) -> JSONResponse:
     """スケジュールとチャンピオン統計を両方更新する。"""
-    if x_update_secret != settings.update_secret:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    verify_update_secret(x_update_secret)
 
     pid = _spawn(["update.py", "--rank", rank])
     logger.info("全更新プロセス起動 PID=%d rank=%s", pid, rank)

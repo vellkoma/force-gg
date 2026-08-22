@@ -38,9 +38,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _mem_by_email: dict[str, UserRecord] = {}
 _mem_by_id: dict[str, UserRecord] = {}
 
-# OAuth state 検証用（CSRF対策）。state -> redirect_uri のマッピング。
-# 本番ではRedisに保存するべきだが、短命な値なのでインメモリで問題ない。
-_oauth_states: dict[str, str] = {}
+# OAuth state 検証用（CSRF対策）。state -> (redirect_uri, 有効期限)。
+# 注意: プロセス内メモリのため、複数レプリカに増やすと state を発行した
+# インスタンスとは別のインスタンスにコールバックが届き、ログインが失敗する。
+# スケールする際は Redis に移すこと。
+_oauth_states: dict[str, tuple[str, datetime]] = {}
+
+# 認可フローが完了するまでの猶予。これを過ぎた state は無効。
+_OAUTH_STATE_TTL = timedelta(minutes=10)
 
 # パスワードリセットトークン（インメモリフォールバック）
 _reset_tokens: dict[str, dict] = {}  # token -> {user_id, expires_at}
@@ -420,20 +425,42 @@ async def reset_password(token: str, new_password: str) -> None:
 # OAuth 2.0 — 共通
 # ===================================================================
 
+def _purge_expired_states() -> None:
+    """期限切れの state を削除する。放置すると中断されたログインの分が溜まり続ける。"""
+    now = _now_utc()
+    for key in [k for k, (_, exp) in _oauth_states.items() if exp < now]:
+        _oauth_states.pop(key, None)
+
+
 def _generate_state(redirect_uri: str) -> str:
-    """CSRF対策用のランダムなstateを生成してredirect_uriと共にインメモリに保存する"""
+    """CSRF対策用のランダムな state を生成し、redirect_uri と有効期限を保存する"""
+    _purge_expired_states()
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = redirect_uri
+    _oauth_states[state] = (redirect_uri, _now_utc() + _OAUTH_STATE_TTL)
     return state
 
 
 def _validate_and_consume_state(state: str) -> str:
-    """stateを検証して使用済みにする。不正なstateは 400 を raise。redirect_uriを返す。"""
-    logger.info("OAuth state check: state=%s known_states=%s", state[:8] + "...", list(_oauth_states.keys())[:5])
-    if state not in _oauth_states:
-        logger.error("OAuth state mismatch: state=%s not in %d stored states", state, len(_oauth_states))
+    """
+    state を検証して使用済みにする。不正な state は 400 を raise。redirect_uri を返す。
+
+    state は CSRF トークンなので、値そのものをログに出さないこと。
+    ログから他ユーザーの処理中の state が読めると CSRF 攻撃が成立する。
+    """
+    _purge_expired_states()
+
+    entry = _oauth_states.pop(state, None)
+    if entry is None:
+        logger.warning("OAuth state 検証失敗（未知または期限切れ）: 保持中 %d 件", len(_oauth_states))
         raise HTTPException(400, "不正なstateパラメータです（CSRF対策）")
-    return _oauth_states.pop(state)
+
+    redirect_uri, expires_at = entry
+    if expires_at < _now_utc():
+        logger.warning("OAuth state 期限切れ")
+        raise HTTPException(400, "認証の有効期限が切れました。もう一度お試しください。")
+
+    return redirect_uri
+
 
 
 async def _find_or_create_oauth_user(

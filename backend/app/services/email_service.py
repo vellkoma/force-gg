@@ -17,7 +17,12 @@ RESEND_API_URL = "https://api.resend.com/emails"
 async def send_password_reset_email(email: str, name: str, reset_url: str) -> None:
     """パスワードリセットメールを送信する"""
     if not settings.resend_api_key:
-        logger.warning("RESEND_API_KEY未設定 — パスワードリセットURL（開発用）: %s", reset_url)
+        # リセットURLにはトークンが含まれるため、本番ではログに出さない。
+        # 開発環境ではメールが送れないので、URL を出さないと動作確認ができない。
+        if settings.is_development:
+            logger.warning("RESEND_API_KEY未設定 — パスワードリセットURL（開発用）: %s", reset_url)
+        else:
+            logger.error("RESEND_API_KEY未設定のためパスワードリセットメールを送信できません: %s", email)
         return
 
     html_body = f"""<!DOCTYPE html>
