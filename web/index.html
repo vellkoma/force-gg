@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!--
+      検索結果からの除外（サイト閉鎖に伴う措置）
+      robots.txt でクロールを禁止すると、クローラーがこの noindex を読めず
+      既存のインデックスが残り続ける。クロールは許可したまま noindex を伝える。
+    -->
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="googlebot" content="noindex, nofollow, noarchive" />
+
     <!-- SEO -->
     <meta name="description" content="LoL stats, AI coaching, and champion insights — powered by force.gg" />
     <meta name="keywords" content="LoL, League of Legends, stats, summoner, champion, build, AI coaching" />

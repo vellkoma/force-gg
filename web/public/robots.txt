@@ -1,14 +1,12 @@
+# サイト閉鎖に伴い、検索結果からの削除を進めています。
+#
+# 重要: ここで Disallow: / を指定しないこと。
+# クロールを禁止するとクローラーが各ページの noindex を読めなくなり、
+# すでにインデックス済みのページが検索結果に残り続けてしまう。
+# 削除が完了するまではクロールを許可し、noindex を読ませる必要がある。
+#
+# 検索結果から完全に消えたことを確認したあと、
+# Disallow: / に切り替えるか、サイト自体を停止する。
+
 User-agent: *
 Allow: /
-
-# 認証・決済まわりはインデックス不要
-Disallow: /login
-Disallow: /register
-Disallow: /forgot-password
-Disallow: /reset-password
-Disallow: /oauth/
-Disallow: /profile
-Disallow: /premium/success
-Disallow: /premium/cancel
-
-Sitemap: https://www.forcegg.io/sitemap.xml
